@@ -8,6 +8,11 @@
   <artifactId>school-serverless-platform</artifactId>
   <version>1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
+  <modules>
+    <module>infra</module>
+    <module>commons</module>
+    <module>students-service</module>
+  </modules>
 
   <name>school-serverless-platform</name>
   <!-- FIXME change it to the project's website -->
