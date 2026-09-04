@@ -1,0 +1,64 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# AWS CDK
+cdk.out/
+cdk.context.json
+*.d.ts
+.cdk.staging/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+
+# IDE - IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# IDE - VSCode
+.vscode/
+*.code-workspace
+
+# IDE - Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Credenciales / secretos (NUNCA en el repo)
+.env
+*.pem
+*.key
+aws-exports.js
+**/secrets/**
+
+# Angular (para Fase 6)
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+yarn-error.log*
+
+# Test / coverage
+coverage/
+*.exec
