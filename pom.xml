@@ -23,9 +23,46 @@
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
     <cdk.version>[2.260.0,3.0.0)</cdk.version>
+    <constructs.version>[10.5.0,11.0.0)</constructs.version>
     <awssdk.version>2.25.0</awssdk.version>
+     <junit.version>5.7.1</junit.version>
+      <mockito.version>5.11.0</mockito.version>
   </properties>
 
+  <dependencyManagement>
+    <dependencies>
+        <!-- AWS Cloud Development Kit -->
+        <dependency>
+            <groupId>software.amazon.awscdk</groupId>
+            <artifactId>aws-cdk-lib</artifactId>
+            <version>${cdk.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sqs</artifactId>
+             <version>${awssdk.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>software.constructs</groupId>
+            <artifactId>constructs</artifactId>
+            <version>${constructs.version}</version>
+        </dependency>
+
+        <dependency>
+          <groupId>org.junit.jupiter</groupId>
+          <artifactId>junit-jupiter</artifactId>
+          <version>${junit.version}</version>
+          <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>        
+    </dependencies>
+  </dependencyManagement>
 
 
   <build>
