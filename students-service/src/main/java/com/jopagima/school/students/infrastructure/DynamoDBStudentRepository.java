@@ -9,6 +9,9 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 
+import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
+import com.jopagima.school.students.domain.StudentAlreadyExistsException;
+
 
 /**
  * Infrastructure adapter implementing the StudentRepository port with the AWS SDK v2
@@ -48,6 +51,11 @@ public class DynamoDBStudentRepository implements StudentRepository {
         // TODO 7: call dynamoDbClient.putItem(request), catching
         //   ConditionalCheckFailedException and rethrowing as
         //   StudentAlreadyExistsException(student.getId()).
-        dynamoDbClient.putItem(request);
+        try{
+            dynamoDbClient.putItem(request);
+        } catch (ConditionalCheckFailedException e) {
+            throw new StudentAlreadyExistsException(student.getId());
+        } 
+        
     }
 }

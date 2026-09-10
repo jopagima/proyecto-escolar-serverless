@@ -2,6 +2,7 @@ package com.jopagima.school.students.infrastructure;
 
 
 import com.jopagima.school.students.domain.Student;
+import com.jopagima.school.students.domain.StudentAlreadyExistsException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,4 +50,13 @@ public class DynamoDbStudentRepositoryTest {
     assertEquals("Garcia", request.item().get("lastName").s());
     assertEquals("ana.garcia@example.com", request.item().get("email").s());
    } 
+
+    @Test
+    void shouldTranslateConditionalCheckFailureToDomainException() {
+        Student student =  Student.create("s-001", "Ana", "Garcia", "ana.garcia@example.com");
+        when(dynamoDbClient.putItem(any(PutItemRequest.class)))
+                .thenThrow(ConditionalCheckFailedException.builder().build());
+
+        assertThrows(StudentAlreadyExistsException.class, () -> repository.save(student));
+    }   
 }
