@@ -22,19 +22,19 @@ public class Student {
             return new Student(id, firstName, lastName, email);
         }
 
-        public String id() {
+        public String getId() {
             return id;
         }
 
-        public String firstName() {
+        public String getFirstName() {
             return firstName;
         }
 
-        public String lastName() {
+        public String getLastName() {
             return lastName;
         }
 
-        public String email() {
+        public String getEmail() {
             return email;
         }
 

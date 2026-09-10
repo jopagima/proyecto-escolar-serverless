@@ -39,10 +39,10 @@ public class StudentTest {
     @Test
     void shouldCreateValidStudentData() {
         Student student = Student.create("STUDENT#123", "John", "Doe", "john.doe@example.com");
-        assertEquals("STUDENT#123", student.id());
-        assertEquals("John", student.firstName());
-        assertEquals("Doe", student.lastName());
-        assertEquals("john.doe@example.com", student.email());
+        assertEquals("STUDENT#123", student.getId());
+        assertEquals("John", student.getFirstName());
+        assertEquals("Doe", student.getLastName());
+        assertEquals("john.doe@example.com", student.getEmail());
     }
 
 
