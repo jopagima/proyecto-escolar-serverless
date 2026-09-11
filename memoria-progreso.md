@@ -8,7 +8,7 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 1 (Alumnos)
-Día: 3 (cerrado) — pendiente Día 4
+Día: 3 (cerrado, verificado con `mvn clean package` completo — 12 tests en verde en todo el reactor) — pendiente Día 4
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
