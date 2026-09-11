@@ -40,19 +40,19 @@ public class Student {
 
         private static void validate(String id, String firstName, String lastName, String email) {
             if (id == null || id.isBlank()) {
-                throw new InvalidStudentException("Student id cannot be blank");
+                throw new InvalidStudentException("id cannot be blank");
             }
             if (firstName == null || firstName.isBlank()) {
-                throw new InvalidStudentException("Student first name cannot be blank");
+                throw new InvalidStudentException("firstName cannot be blank");
             }
             if (lastName == null || lastName.isBlank()) {
-                throw new InvalidStudentException("Student last name cannot be blank");
+                throw new InvalidStudentException("lastName cannot be blank");
             }
             if (email == null || email.isBlank()) {
-                throw new InvalidStudentException("Student email cannot be blank");
+                throw new InvalidStudentException("email cannot be blank");
             }
             if (!EMAIL_PATTERN.matcher(email).matches()) {
-                throw new InvalidStudentException("Student email must be valid");
+                throw new InvalidStudentException("email must be valid");
             }
         }
 }
