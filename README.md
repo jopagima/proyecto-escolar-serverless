@@ -36,6 +36,8 @@ Full mapping, rationale and cost trade-offs are tracked in `memoria-progreso.md`
 - **Build:** Maven, multi-module
 - **IaC:** AWS CDK 2.260.0 (Java)
 - **AWS SDK:** AWS SDK for Java v2, 2.25.0
+- **Compute:** AWS Lambda, one function per operation
+- **API layer:** Amazon API Gateway (HTTP API), Lambda proxy integration
 - **Testing:** JUnit 5, Mockito, CDK `Template` assertions
 - **Frontend (later phase):** Angular + Angular Material
 
@@ -54,8 +56,8 @@ school-serverless-platform/
 
 Each service module (from Phase 2 onward, applied retroactively to `students-service`)
 follows a hexagonal layout: `domain` (entities, ports — zero AWS SDK dependencies),
-`infrastructure` (adapters implementing those ports), and the Lambda handler as the
-entry-point adapter.
+`infrastructure` (adapters implementing those ports, including the Lambda handler as
+the entry-point adapter and DTOs specific to each boundary, e.g. HTTP request bodies).
 
 ## Design conventions
 
@@ -66,7 +68,13 @@ entry-point adapter.
 - **TDD**, reinforced for any code touching the AWS SDK: business logic is unit-tested
   against mocked SDK clients (Mockito); every adapter has a dedicated contract test
   covering edge cases (not-found, validation errors, failed conditional writes).
-- **Domain purity:** entities and ports never import AWS SDK or Lambda types.
+- **Domain purity:** entities and ports never import AWS SDK, Lambda, or JSON
+  serialization types. Inbound HTTP payloads are mapped through a boundary-specific
+  DTO (e.g. `RegisterStudentRequest`) before a domain entity is constructed.
+- **One Lambda per operation**, not a shared router — each function tunes memory and
+  timeout independently; revisited only if cold-start cost becomes a real concern.
+- **Least-privilege IAM** via CDK `grant*` methods (e.g. `grantWriteData`), never
+  manually authored policies or broad `grantReadWriteData` grants "just in case".
 - Code, comments, and identifiers are always in English; design rationale and daily
   session material are documented in Spanish (see `memoria-progreso.md`).
 
@@ -84,7 +92,7 @@ the corresponding session's material before being introduced.
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Setup & diagnosis | ✅ Closed |
-| 1 | Students (+ CI/CD pipeline setup at close) | 🔄 In progress |
+| 1 | Students (+ CI/CD pipeline setup at close) | 🔄 In progress (Day 3 of 4 closed) |
 | 2 | Courses (hexagonal backend activated retroactively at close) | ⏳ Pending |
 | 3 | Exams / Questions | ⏳ Pending |
 | 4 | Answers | ⏳ Pending |
@@ -107,6 +115,9 @@ mvn test -pl infra
 
 ## Status
 
-Currently in **Phase 1 (Students)**: DynamoDB table provisioned via CDK (tested with
-`Template` assertions), `Student` domain entity and `DynamoDbStudentRepository` adapter
-in progress. Next: Lambda handler + API Gateway integration.
+Currently in **Phase 1 (Students)**, Day 3 closed: first end-to-end flow deployable —
+`POST /students` (API Gateway HTTP API, proxy integration) → `RegisterStudentHandler`
+(Lambda, Java 17) → `DynamoDbStudentRepository` → DynamoDB, with domain exceptions
+translated to HTTP status codes (201/400/409) and least-privilege IAM via
+`grantWriteData`. Next: Day 4, CI/CD pipeline setup (CodeBuild + CodePipeline/CDK
+Pipelines), now that a first deployable microservice exists.
