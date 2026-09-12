@@ -5,6 +5,8 @@ package com.jopagima.school.infra.pipeline;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.StackProps;
 import software.amazon.awscdk.StageProps;
+import software.amazon.awscdk.services.codebuild.BuildEnvironment;
+import software.amazon.awscdk.services.codebuild.LinuxBuildImage;
 import software.amazon.awscdk.pipelines.CodeBuildStep;
 import software.amazon.awscdk.pipelines.CodePipeline;
 import software.amazon.awscdk.pipelines.CodePipelineSource;
@@ -38,14 +40,17 @@ public class PipelineStack extends Stack {
                 //   - "npx cdk synth" (produces the CloudFormation templates the
                 //     pipeline itself deploys)                
         CodeBuildStep synthStep = CodeBuildStep.Builder.create("Synth")
-                .input(source)
-                .commands(List.of(
-                    "npm install -g aws-cdk@2.1128.1", // install CDK CLI
-                    "mvn clean package",       // build the Java Lambda artifact
-                    "cd infra && cdk synth"                // synthesize the CDK app
-                ))
-                .primaryOutputDirectory("infra/cdk.out")
-                .build();
+        .input(source)
+        .buildEnvironment(BuildEnvironment.builder()
+                .buildImage(LinuxBuildImage.AMAZON_LINUX_2_5)
+                .build())
+        .commands(List.of(
+                "npm install -g aws-cdk@2.1128.1",
+                "mvn -N install",
+                "mvn clean package",
+                "cdk synth"
+        ))
+        .build();
 
         CodePipeline pipeline = CodePipeline.Builder.create(this, "SchoolPipeline")
             .pipelineName("SchoolPipeline")

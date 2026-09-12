@@ -1,0 +1,3 @@
+{
+  "app": "mvn -e -q -f infra compile exec:java -Dexec.mainClass=com.jopagima.school.infra.ServerlessSchoolManagementApp"
+}
