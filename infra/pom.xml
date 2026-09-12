@@ -32,6 +32,25 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
-    </dependencies>    
+        <dependency>
+            <groupId>com.jopagima.school</groupId>
+            <artifactId>students-service</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>        
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>com.jopagima.school.infra.ServerlessSchoolManagementApp</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
