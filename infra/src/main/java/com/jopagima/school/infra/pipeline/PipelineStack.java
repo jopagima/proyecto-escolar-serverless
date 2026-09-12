@@ -45,10 +45,9 @@ public class PipelineStack extends Stack {
                 .buildImage(LinuxBuildImage.AMAZON_LINUX_2_5)
                 .build())
         .commands(List.of(
-                "npm install -g aws-cdk@2.1128.1",
-                "mvn -N install",
-                "mvn clean package",
-                "cdk synth"
+            "npm install -g aws-cdk@2.1128.1",
+            "mvn clean install",
+            "cdk synth"
         ))
         .build();
 
