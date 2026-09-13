@@ -7,8 +7,9 @@ Angular", reimplementado en clave 100% serverless AWS (Lambda, API Gateway, Dyna
 Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
-Fase: 1 (Alumnos)
-Día: 3 (cerrado, verificado con `mvn clean package` completo — 12 tests en verde en todo el reactor) — pendiente Día 4
+Fase: 1 (Alumnos) — ✅ CERRADA, verificada en producción real (HTTP 201/409 confirmados
+contra el endpoint desplegado)
+Día: pendiente Fase 2 (Cursos)
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -19,76 +20,104 @@ Día: 3 (cerrado, verificado con `mvn clean package` completo — 12 tests en ve
   `StudentRepository`, adaptador `DynamoDbStudentRepository` con SDK v2 de bajo nivel.
   Persistencia con `ConditionExpression` atómica para evitar duplicados.
 - Fase 1, Día 3 — `RegisterStudentHandler` (Lambda, adaptador de entrada) + DTO
-  `RegisterStudentRequest` propio de la frontera HTTP. `StudentsApiConstruct` (CDK):
-  Lambda Java 17 + HTTP API con ruta `POST /students`, permisos IAM de mínimo
-  privilegio vía `grantWriteData`. Primer flujo end-to-end desplegable de la Fase 1
-  (HTTP → Lambda → DynamoDB) completado.
+  `RegisterStudentRequest`. `StudentsApiConstruct` (CDK): Lambda Java 17 + HTTP API con
+  ruta `POST /students`, permisos IAM de mínimo privilegio vía `grantWriteData`.
+- Fase 1, Día 4 — Pipeline CI/CD self-mutating (CDK Pipelines): CodeStar Connection a
+  GitHub, `PipelineStack`/`SchoolServerlessStage`/`StudentsStack`, CodeBuild con
+  build/test/synth. Tras una sesión larga de depuración (ver "Incidentes" abajo),
+  **desplegado y verificado en producción real**: `POST /students` responde 201 en la
+  primera llamada y 409 (`ConditionExpression`) en la segunda, confirmado con `curl -i`
+  contra el endpoint real de API Gateway.
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
-  `commons`, `students-service`), Java 17, CDK 2.260.0, AWS SDK v2 2.25.0. Punto de
-  partida validado en Fase 0; dependencias reales añadidas en Fase 1 Día 1.
+  `commons`, `students-service`), Java 17, CDK 2.260.0, AWS SDK v2 2.25.0.
 - Un microservicio por bounded context → una tabla DynamoDB por microservicio (5 tablas
-  en total). PK/SK overloading como convención de todo el proyecto desde el Día 1,
-  aunque el dominio Alumnos hoy solo tenga un tipo de ítem (`SK = "METADATA"`).
-- Preguntas embebidas dentro del Item de Examen (no tabla separada) — refleja la
-  relación bidireccional del curso original.
+  en total). PK/SK overloading como convención de todo el proyecto desde el Día 1.
+- Preguntas embebidas dentro del Item de Examen (no tabla separada).
 - Jerarquía Asignatura padre/hija resuelta con GSI sobre `parentId`.
 - Joins distribuidos (Alumno+Pregunta+Examen en Respuestas) resueltos con
   denormalización en escritura, sustituyendo el Feign síncrono del curso original.
-- Persistencia con SDK v2 de bajo nivel (`DynamoDbClient`), no Enhanced Client, para no
-  acoplar las entidades de dominio a anotaciones del SDK de AWS — decisión de Fase 1
-  Día 2, aplicable al resto de dominios.
+- Persistencia con SDK v2 de bajo nivel (`DynamoDbClient`), no Enhanced Client.
 - Escrituras con `ConditionExpression` (`attribute_not_exists(PK)`) en vez de
-  leer-antes-de-escribir, para evitar race conditions — patrón a repetir en el resto
-  de repositorios.
+  leer-antes-de-escribir — verificado en producción (409 real).
 - DTOs de entrada propios por frontera (ej. `RegisterStudentRequest`), separados de las
-  entidades de dominio — decisión de Fase 1 Día 3: el dominio nunca conoce JSON/HTTP.
-- Integración Lambda-API Gateway de tipo proxy (no mapping templates VTL): toda la
-  traducción HTTP↔dominio vive en Java testable, no en configuración VTL sin tests.
-- Una Lambda por operación (no un router interno con varias rutas): cada operación
-  ajusta memoria/timeout de forma independiente; revisable si el coste de cold starts
-  se vuelve un problema real (no esperado a este volumen de PoC).
-- Permisos IAM vía métodos `grant*` de CDK (ej. `grantWriteData`), nunca políticas
-  manuales, aplicando mínimo privilegio real (no `grantReadWriteData` "por si acaso").
-- Cognito con grupos de roles: activado desde la Fase 1 (no retroactivo en Fase 6) —
-  aún no implementado, pendiente en próximos días de esta fase.
+  entidades de dominio.
+- Integración Lambda-API Gateway de tipo proxy (no mapping templates VTL).
+- Una Lambda por operación (no un router interno con varias rutas).
+- Permisos IAM vía métodos `grant*` de CDK, nunca políticas manuales.
+- Cognito con grupos de roles: activado desde la Fase 1 — aún no implementado, pendiente
+  en próximos días de esta fase o inicio de Fase 2.
+- **`students-service` empaqueta un fat/uber jar vía `maven-shade-plugin`** (no un jar
+  delgado): el runtime de AWS Lambda no tiene acceso al `~/.m2` local, así que todas
+  las dependencias de ejecución (Jackson, AWS SDK v2, aws-lambda-java-events) deben ir
+  empaquetadas dentro del jar desplegado. Decisión de Fase 1 Día 4, tras un
+  `NoClassDefFoundError` en producción. Aplica a cualquier microservicio futuro que
+  despliegue Lambdas.
+- **Todo handler Lambda necesita un constructor público sin argumentos**: el runtime de
+  Lambda instancia la clase handler por reflexión y no conoce el constructor de test
+  (el que recibe el repositorio para Mockito). El constructor sin argumentos construye
+  el adaptador real (`DynamoDbClient.create()` + `System.getenv("TABLE_NAME")}`).
+  Patrón a repetir en cualquier handler futuro.
 - Estándar de código fijo: Java, TDD y Clean Code en todo el proyecto (no se reabre).
 - Código/comentarios/TODOs siempre en inglés; explicación y paso a paso siempre en
   español (no se reabre).
 - Arquitectura hexagonal backend: se activa formalmente al cierre de la Fase 2,
-  aplicada retroactivamente a Alumnos y Cursos. Desde Fase 1 se siembra la separación
-  de paquetes (`domain`/`infrastructure` dentro del mismo módulo Maven) para que el
-  refactor sea mecánico. Pendiente de decidir en esa Skill si se separa además en
-  submódulos Maven distintos (`students-domain`/`students-infrastructure`) para que la
-  regla de dependencia sea un error de compilación, no solo convención.
+  aplicada retroactivamente a Alumnos y Cursos.
 - Arquitectura hexagonal frontend: se activa de forma incremental al inicio de la Fase 6.
-- Pipeline CI/CD (Git + CodeBuild + CodePipeline/CDK Pipelines): aún no preparado —
-  previsto para la Fase 1, Día 4, ya que el primer microservicio desplegable (Alumnos)
-  ya existe desde el cierre del Día 3.
+- Pipeline CI/CD (CodeStar Connection GitHub + CodeBuild + CDK Pipelines
+  self-mutating): **operativo y verificado**, cierre de Fase 1.
 - Control de costes: PoC formativo, criterio de sustituir (no eliminar) — DynamoDB en
   vez de Aurora Serverless v2/DocumentDB, API Gateway HTTP API en vez de REST API,
   Step Functions Express mantenido por valor de aprendizaje en el flujo de corrección
-  de examen (no se reabre).
+  de examen (no se reabre). CodePipeline+CodeBuild: único coste fijo del proyecto hasta
+  ahora (~$1/mes + minutos de build), aceptado explícitamente por su valor de
+  aprendizaje (Fase 1 Día 4).
 - TDD reforzado en código con SDK de AWS: todo adaptador SDK lleva tests de contrato
   con mocks/stubs, sin dependencia real de AWS en los tests unitarios (no se reabre).
+- **`cdk.json` vive en la raíz del repo** (no dentro de `infra/`), invocando
+  `mvn -e -q -f infra compile exec:java -Dexec.mainClass=...` — necesario para que
+  `cdk synth`/`deploy` resuelvan rutas de assets de forma consistente entre invocación
+  local y CodeBuild.
+- El buildspec del `CodeBuildStep` de síntesis usa `mvn clean install` (no `package`):
+  el `-f infra` en modo aislado necesita que `students-service` esté instalado en el
+  repositorio Maven local/del contenedor, no solo compilado en su `target/`.
+- La ruta del asset del jar de Lambda (`Code.fromAsset(...)`) se resuelve probando dos
+  candidatos (relativo a la raíz del repo, relativo al módulo `infra`), porque el
+  directorio de trabajo del proceso difiere según si invoca `cdk synth` (raíz, vía
+  `cdk.json`) o Maven Surefire testeando el módulo `infra` (cwd=`infra/`).
+
+## Incidentes relevantes de la Fase 1 (lecciones operacionales, no repetir)
+- **`git clean -xfd` sin comprobar `git status` primero** borró todo el trabajo no
+  comiteado del Día 4 (la flag `-x` ignora el `.gitignore`). Reconstruido íntegramente
+  a partir del historial de la conversación. Lección: comitear al cerrar cada bloque de
+  TODOs resueltos, no solo "al final del día"; nunca usar `-x` sin verificar
+  `git status` antes.
+- **Bloqueo circular (deadlock) de self-mutation**: un buildspec roto en `Synth` impide
+  que `UpdatePipeline/SelfMutate` llegue a ejecutarse, y por tanto el buildspec nunca se
+  actualiza con el fix — hay que romper el círculo con un `cdk deploy` manual del
+  propio `PipelineStack` para forzar la actualización del recurso CodeBuild.
+- **Orden de build de Maven con `-f` (modo aislado)**: al invocar un submódulo con `-f`,
+  Maven no ve el reactor completo y resuelve su `<parent>`/dependencias `provided`
+  contra el repositorio local, no contra otros módulos hermanos recién compilados —
+  de ahí la necesidad de `mvn clean install` (no `package`) antes de `cdk synth`.
 
 ## Servicios AWS de la hoja de ruta original ya acoplados
-- DynamoDB — Fase 1, Día 1 — primera tabla real del proyecto (Alumnos).
-- AWS Lambda — Fase 1, Día 3 — `RegisterStudentHandler`, adaptador de entrada HTTP.
-- Amazon API Gateway (HTTP API) — Fase 1, Día 3 — ruta `POST /students`, integración
-  proxy con Lambda.
-- (Cognito y S3 presigned: planificados para próximos días de Fase 1, aún no
-  implementados; CodeBuild/CodePipeline previsto para el Día 4)
+- DynamoDB — Fase 1, Día 1.
+- AWS Lambda — Fase 1, Día 3.
+- Amazon API Gateway (HTTP API) — Fase 1, Día 3.
+- AWS CodePipeline + AWS CodeBuild — Fase 1, Día 4, operativo y verificado.
+- (Cognito y S3 presigned: aún no implementados, pendientes de próxima sesión)
 
 ## Pendiente / próximo día
-Fase 1, Día 4: preparación del pipeline CI/CD (repo Git → CodeBuild build/test →
-despliegue vía CDK), apoyándose en el primer microservicio ya desplegable (Alumnos).
-A partir de este día, cualquier despliegue nuevo debe pasar por el pipeline, no por
-pasos manuales.
+Confirmación de José para abrir Fase 2 (Cursos): `courses-service`, relación N:M
+Curso-Alumno con adjacency list. Recordatorio: al cierre de Fase 2 se activa la Skill
+de arquitectura hexagonal backend, aplicada retroactivamente a Alumnos y Cursos.
 
 ## Notas y dudas abiertas
-- Evaluar en Fase 2, una vez exista el pipeline, si se introduce X-Ray/CloudWatch EMF
+- Evaluar en Fase 2, una vez asentado el pipeline, si se introduce X-Ray/CloudWatch EMF
   como capa transversal de observabilidad (servicio de la hoja de ruta original).
-- Ningún recurso con coste fijo por tiempo introducido hasta ahora — no aplica todavía
-  la salvaguarda de `cdk destroy` entre sesiones.
+- Cognito con grupos de roles sigue pendiente de implementar — decidir si se aborda
+  como cierre de Fase 1 o como apertura de Fase 2.
+- Ningún recurso con coste fijo por tiempo salvo CodePipeline/CodeBuild (aceptado) —
+  no aplica la salvaguarda de `cdk destroy` entre sesiones más allá de eso.

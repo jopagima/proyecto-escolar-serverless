@@ -14,7 +14,9 @@ rebuilding the same domain (students, courses, subjects, exams/questions, answer
 
 One microservice per bounded context, each backed by its own DynamoDB table
 (`PAY_PER_REQUEST` billing), fronted by API Gateway HTTP APIs and secured with Amazon
-Cognito. No service runs 24/7; there are no provisioned/always-on resources.
+Cognito. No service runs 24/7; there are no provisioned/always-on resources. Deployments
+are fully automated through a self-mutating CDK Pipeline — no manual `cdk deploy` to
+production once the pipeline exists.
 
 | Original course (Spring Cloud) | Serverless AWS equivalent |
 |---|---|
@@ -34,10 +36,11 @@ Full mapping, rationale and cost trade-offs are tracked in `memoria-progreso.md`
 
 - **Language:** Java 17
 - **Build:** Maven, multi-module
-- **IaC:** AWS CDK 2.260.0 (Java)
+- **IaC:** AWS CDK 2.260.0 (Java), CDK Pipelines (self-mutating)
 - **AWS SDK:** AWS SDK for Java v2, 2.25.0
-- **Compute:** AWS Lambda, one function per operation
+- **Compute:** AWS Lambda, one function per operation, packaged as a shaded/uber jar
 - **API layer:** Amazon API Gateway (HTTP API), Lambda proxy integration
+- **CI/CD:** AWS CodePipeline + AWS CodeBuild, triggered on push via GitHub CodeStar Connection
 - **Testing:** JUnit 5, Mockito, CDK `Template` assertions
 - **Frontend (later phase):** Angular + Angular Material
 
@@ -45,9 +48,9 @@ Full mapping, rationale and cost trade-offs are tracked in `memoria-progreso.md`
 
 ```
 school-serverless-platform/
-├── infra/               # CDK constructs and stacks — the only module aware of CloudFormation
+├── infra/               # CDK constructs, stacks and the pipeline — the only module aware of CloudFormation
 ├── commons/              # Shared Java utilities across services
-├── students-service/    # Alumnos bounded context (active)
+├── students-service/    # Alumnos bounded context (active, deployed)
 ├── courses-service/     # Cursos bounded context (created at Phase 2)
 ├── exams-service/       # Exámenes/Preguntas bounded context (created at Phase 3)
 ├── answers-service/     # Respuestas bounded context (created at Phase 4)
@@ -57,7 +60,7 @@ school-serverless-platform/
 Each service module (from Phase 2 onward, applied retroactively to `students-service`)
 follows a hexagonal layout: `domain` (entities, ports — zero AWS SDK dependencies),
 `infrastructure` (adapters implementing those ports, including the Lambda handler as
-the entry-point adapter and DTOs specific to each boundary, e.g. HTTP request bodies).
+the entry-point adapter and boundary-specific DTOs, e.g. HTTP request bodies).
 
 ## Design conventions
 
@@ -66,15 +69,17 @@ the entry-point adapter and DTOs specific to each boundary, e.g. HTTP request bo
 - **`PAY_PER_REQUEST` billing** everywhere — no fixed/hourly-cost resource is introduced
   without an explicit justification and cost estimate.
 - **TDD**, reinforced for any code touching the AWS SDK: business logic is unit-tested
-  against mocked SDK clients (Mockito); every adapter has a dedicated contract test
-  covering edge cases (not-found, validation errors, failed conditional writes).
+  against mocked SDK clients (Mockito); every adapter has a dedicated contract test.
 - **Domain purity:** entities and ports never import AWS SDK, Lambda, or JSON
-  serialization types. Inbound HTTP payloads are mapped through a boundary-specific
-  DTO (e.g. `RegisterStudentRequest`) before a domain entity is constructed.
-- **One Lambda per operation**, not a shared router — each function tunes memory and
-  timeout independently; revisited only if cold-start cost becomes a real concern.
-- **Least-privilege IAM** via CDK `grant*` methods (e.g. `grantWriteData`), never
-  manually authored policies or broad `grantReadWriteData` grants "just in case".
+  serialization types.
+- **One Lambda per operation**, not a shared router.
+- **Least-privilege IAM** via CDK `grant*` methods, never manually authored policies.
+- **Every Lambda handler ships a public no-arg constructor** wiring the real adapter
+  (e.g. `DynamoDbClient.create()`), required by the Lambda Java runtime's reflection-based
+  instantiation — the test constructor (accepting a mocked port) is separate.
+- **Lambda jars are shaded/uber jars** (`maven-shade-plugin`): the Lambda runtime has
+  no access to the local Maven repository, so all runtime dependencies (Jackson, AWS
+  SDK v2, Lambda events) must be bundled into the deployed artifact.
 - Code, comments, and identifiers are always in English; design rationale and daily
   session material are documented in Spanish (see `memoria-progreso.md`).
 
@@ -83,16 +88,17 @@ the entry-point adapter and DTOs specific to each boundary, e.g. HTTP request bo
 This project substitutes AWS services only when a cheaper alternative delivers the same
 functional/learning value (e.g. DynamoDB over Aurora Serverless v2/DocumentDB, API
 Gateway HTTP API over REST API). Services with real but low cost are kept when they add
-genuine architectural learning (e.g. Step Functions Express, Cognito, CDK Pipelines).
-Any new resource with non-trivial cost is called out explicitly, with an estimate, in
-the corresponding session's material before being introduced.
+genuine architectural learning (e.g. Step Functions Express, Cognito, CDK Pipelines,
+CodePipeline/CodeBuild — the project's only fixed-cost service, ~$1/month, accepted
+explicitly for its learning value). Any new resource with non-trivial cost is called out
+explicitly, with an estimate, before being introduced.
 
 ## Roadmap
 
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Setup & diagnosis | ✅ Closed |
-| 1 | Students (+ CI/CD pipeline setup at close) | 🔄 In progress (Day 3 of 4 closed) |
+| 1 | Students (CRUD, DynamoDB, Lambda, API Gateway, CI/CD pipeline) | ✅ Closed — deployed and verified end-to-end in production |
 | 2 | Courses (hexagonal backend activated retroactively at close) | ⏳ Pending |
 | 3 | Exams / Questions | ⏳ Pending |
 | 4 | Answers | ⏳ Pending |
@@ -105,7 +111,9 @@ Day-by-day progress, technical decisions and open questions are tracked in
 ## Building and testing
 
 ```bash
-# From the repository root
+# From the repository root — installs all modules to the local Maven repo,
+# required for `infra`'s isolated (-f) invocation of cdk synth to resolve
+# students-service as a provided dependency
 mvn clean install
 
 # Run tests for a single module
@@ -113,11 +121,23 @@ mvn test -pl students-service
 mvn test -pl infra
 ```
 
+## Deploying
+
+```bash
+# One-time bootstrap per AWS account/region
+cdk bootstrap aws://<account-id>/<region> --profile <your-profile>
+
+# One-time manual deploy of the pipeline itself
+cdk deploy SchoolServerlessPipelineStack --profile <your-profile>
+```
+
+From then on, every push to `main` triggers the pipeline automatically — no further
+manual `cdk deploy` is needed for business stacks (`StudentsStack`, etc.).
+
 ## Status
 
-Currently in **Phase 1 (Students)**, Day 3 closed: first end-to-end flow deployable —
-`POST /students` (API Gateway HTTP API, proxy integration) → `RegisterStudentHandler`
-(Lambda, Java 17) → `DynamoDbStudentRepository` → DynamoDB, with domain exceptions
-translated to HTTP status codes (201/400/409) and least-privilege IAM via
-`grantWriteData`. Next: Day 4, CI/CD pipeline setup (CodeBuild + CodePipeline/CDK
-Pipelines), now that a first deployable microservice exists.
+**Phase 1 (Students) closed.** `POST /students` is live on API Gateway, backed by a
+Lambda (Java 17) writing to DynamoDB with an atomic conditional write — verified against
+the real deployed endpoint (`201` on first registration, `409 Student already exists` on
+duplicate). The full pipeline (Source → Synth → SelfMutate → Assets → Deploy) runs green
+end-to-end. Next: Phase 2 (Courses).
