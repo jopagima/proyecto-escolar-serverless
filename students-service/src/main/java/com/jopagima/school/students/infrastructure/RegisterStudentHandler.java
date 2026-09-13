@@ -10,6 +10,7 @@ import com.jopagima.school.students.domain.InvalidStudentException;
 import com.jopagima.school.students.domain.Student;
 import com.jopagima.school.students.domain.StudentAlreadyExistsException;
 import com.jopagima.school.students.domain.StudentRepository;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
 /**
  * Entry-point adapter: translates the HTTP proxy event into a domain Student and
@@ -20,6 +21,10 @@ public class RegisterStudentHandler implements RequestHandler<APIGatewayV2HTTPEv
     private final StudentRepository studentRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+
+    public RegisterStudentHandler() {
+        this(new DynamoDBStudentRepository(DynamoDbClient.create(), System.getenv("TABLE_NAME")));
+    }
     public RegisterStudentHandler(StudentRepository studentRepository) {
         this.studentRepository = studentRepository;
     }
