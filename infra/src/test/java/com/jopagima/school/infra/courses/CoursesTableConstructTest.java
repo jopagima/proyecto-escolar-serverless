@@ -42,12 +42,12 @@ public class CoursesTableConstructTest {
                 ),
                 "GlobalSecondaryIndexes", List.of(
                     Map.of(
-                        "IndexName", "GSI1",
+                        "IndexName", "StudentCoursesIndex",
                         "KeySchema", List.of(
                             Map.of("AttributeName", "GSI1PK", "KeyType", "HASH"),
                             Map.of("AttributeName", "GSI1SK", "KeyType", "RANGE")
                         ),
-                        "Projection", Map.of("ProjectionType", "ALL")
+                        "Projection", Map.of("ProjectionType", "KEYS_ONLY")
                     )
                 )
             )
