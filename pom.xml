@@ -12,6 +12,7 @@
     <module>infra</module>
     <module>commons</module>
     <module>students-service</module>
+    <module>courses-service</module>
   </modules>
 
   <name>school-serverless-platform</name>
