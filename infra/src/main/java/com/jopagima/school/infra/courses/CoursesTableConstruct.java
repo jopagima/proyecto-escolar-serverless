@@ -58,4 +58,8 @@ public class CoursesTableConstruct extends Construct {
 		return table;
 	}
 
+    public String getTableName() {
+        return TABLE_NAME;
+    }   
+
 }

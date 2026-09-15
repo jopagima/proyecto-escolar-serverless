@@ -2,6 +2,7 @@ package com.jopagima.school.infra.courses;
 
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.assertions.Template;
+import software.amazon.awscdk.assertions.Match;
 
 import java.util.List;
 import java.util.Map;
@@ -73,4 +74,33 @@ public class CoursesTableConstructTest {
         );
 
     }
+
+    @Test
+    void shouldCreateStudentCoursesGlobalSecondaryIndex() {
+        Stack stack = new Stack();
+        new CoursesTableConstruct(stack, "CoursesTable");
+
+        Template template = Template.fromStack(stack);
+
+        template.hasResourceProperties("AWS::DynamoDB::Table", Map.of(
+                "GlobalSecondaryIndexes", Match.arrayWith(List.of(
+                        Map.of(
+                                "IndexName", "StudentCoursesIndex",
+                                "KeySchema", Match.arrayWith(List.of(
+                                        Map.of("AttributeName", "GSI1PK", "KeyType", "HASH"),
+                                        Map.of("AttributeName", "GSI1SK", "KeyType", "RANGE")
+                                )),
+                                "Projection", Map.of("ProjectionType", "KEYS_ONLY")
+                        )
+                ))
+        ));
+    } 
+    
+    @Test
+    void shouldExposeTableNameAsConstructProperty() {
+        Stack stack = new Stack();
+        CoursesTableConstruct construct = new CoursesTableConstruct(stack, "CoursesTable");
+
+        org.junit.jupiter.api.Assertions.assertEquals("CoursesTable", construct.getTableName());
+    }    
 }
