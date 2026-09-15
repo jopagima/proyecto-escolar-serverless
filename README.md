@@ -28,6 +28,7 @@ production once the pipeline exists.
 | MongoDB (answers service) | DynamoDB on-demand (DocumentDB discarded: same reason as above) |
 | Blob/MultipartFile photo upload | S3 presigned URLs, direct upload from Angular |
 | JPQL joins across services | Write-time denormalization (no distributed sync joins) |
+| Curso-Alumno N:M relation (join table) | DynamoDB adjacency list pattern + GSI for the inverse query |
 | Angular + Angular Material SPA | Unchanged, served from S3 + CloudFront |
 
 Full mapping, rationale and cost trade-offs are tracked in `memoria-progreso.md`.
@@ -51,21 +52,27 @@ school-serverless-platform/
 ├── infra/               # CDK constructs, stacks and the pipeline — the only module aware of CloudFormation
 ├── commons/              # Shared Java utilities across services
 ├── students-service/    # Alumnos bounded context (active, deployed)
-├── courses-service/     # Cursos bounded context (created at Phase 2)
+├── courses-service/     # Cursos bounded context (active — table modeled, domain pending)
 ├── exams-service/       # Exámenes/Preguntas bounded context (created at Phase 3)
 ├── answers-service/     # Respuestas bounded context (created at Phase 4)
 └── subjects-service/    # Asignaturas bounded context (created at Phase 5)
 ```
 
-Each service module (from Phase 2 onward, applied retroactively to `students-service`)
-follows a hexagonal layout: `domain` (entities, ports — zero AWS SDK dependencies),
-`infrastructure` (adapters implementing those ports, including the Lambda handler as
-the entry-point adapter and boundary-specific DTOs, e.g. HTTP request bodies).
+Each service module (from Phase 2 onward, applied retroactively to `students-service`
+at the close of Phase 2) follows a hexagonal layout: `domain` (entities, ports — zero
+AWS SDK dependencies), `infrastructure` (adapters implementing those ports, including
+the Lambda handler as the entry-point adapter and boundary-specific DTOs).
 
 ## Design conventions
 
 - **One DynamoDB table per bounded context**, with `PK`/`SK` key overloading as a
   project-wide convention, even where a domain currently has a single item type.
+- **N:M relationships use the adjacency list pattern**: the parent entity and its
+  relation items share the same table/item collection (same PK) — e.g. a Course item
+  (`PK=COURSE#<id>`, `SK=METADATA`) and its enrollment items
+  (`PK=COURSE#<id>`, `SK=STUDENT#<studentId>`). A GSI answers the inverse query (e.g.
+  "courses for a student") without a table scan, using `KEYS_ONLY` projection when full
+  attribute duplication isn't needed.
 - **`PAY_PER_REQUEST` billing** everywhere — no fixed/hourly-cost resource is introduced
   without an explicit justification and cost estimate.
 - **TDD**, reinforced for any code touching the AWS SDK: business logic is unit-tested
@@ -77,9 +84,9 @@ the entry-point adapter and boundary-specific DTOs, e.g. HTTP request bodies).
 - **Every Lambda handler ships a public no-arg constructor** wiring the real adapter
   (e.g. `DynamoDbClient.create()`), required by the Lambda Java runtime's reflection-based
   instantiation — the test constructor (accepting a mocked port) is separate.
-- **Lambda jars are shaded/uber jars** (`maven-shade-plugin`): the Lambda runtime has
-  no access to the local Maven repository, so all runtime dependencies (Jackson, AWS
-  SDK v2, Lambda events) must be bundled into the deployed artifact.
+- **Every service module configures `maven-shade-plugin` from creation**, not only when
+  its first Lambda is implemented: the Lambda runtime has no access to the local Maven
+  repository, so all runtime dependencies must be bundled into the deployed artifact.
 - Code, comments, and identifiers are always in English; design rationale and daily
   session material are documented in Spanish (see `memoria-progreso.md`).
 
@@ -99,7 +106,7 @@ explicitly, with an estimate, before being introduced.
 |---|---|---|
 | 0 | Setup & diagnosis | ✅ Closed |
 | 1 | Students (CRUD, DynamoDB, Lambda, API Gateway, CI/CD pipeline) | ✅ Closed — deployed and verified end-to-end in production |
-| 2 | Courses (hexagonal backend activated retroactively at close) | ⏳ Pending |
+| 2 | Courses (hexagonal backend activated retroactively at close) | 🔄 In progress (Day 1 of ~4 closed — table modeled) |
 | 3 | Exams / Questions | ⏳ Pending |
 | 4 | Answers | ⏳ Pending |
 | 5 | Subjects (parent/child hierarchy, cursor pagination) | ⏳ Pending |
@@ -113,11 +120,12 @@ Day-by-day progress, technical decisions and open questions are tracked in
 ```bash
 # From the repository root — installs all modules to the local Maven repo,
 # required for `infra`'s isolated (-f) invocation of cdk synth to resolve
-# students-service as a provided dependency
+# sibling service modules as provided dependencies
 mvn clean install
 
 # Run tests for a single module
 mvn test -pl students-service
+mvn test -pl courses-service
 mvn test -pl infra
 ```
 
@@ -136,8 +144,14 @@ manual `cdk deploy` is needed for business stacks (`StudentsStack`, etc.).
 
 ## Status
 
-**Phase 1 (Students) closed.** `POST /students` is live on API Gateway, backed by a
-Lambda (Java 17) writing to DynamoDB with an atomic conditional write — verified against
-the real deployed endpoint (`201` on first registration, `409 Student already exists` on
-duplicate). The full pipeline (Source → Synth → SelfMutate → Assets → Deploy) runs green
-end-to-end. Next: Phase 2 (Courses).
+**Phase 1 (Students) closed and verified in production.** `POST /students` is live on
+API Gateway, backed by a Lambda (Java 17) writing to DynamoDB with an atomic conditional
+write — confirmed against the real deployed endpoint (`201` on first registration, `409
+Student already exists` on duplicate). The pipeline (Source → Synth → SelfMutate →
+Assets → Deploy) runs green end-to-end.
+
+**Phase 2 (Courses) in progress.** Day 1 closed: `CoursesTableConstruct` models the
+Course-Student N:M relationship via the adjacency list pattern plus a
+`StudentCoursesIndex` GSI for the inverse query, verified with CDK assertions tests.
+Next: Day 2, `Course`/`CourseEnrollment` domain entities and DynamoDB adapter with
+reinforced TDD.
