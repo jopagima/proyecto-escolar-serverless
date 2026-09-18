@@ -1,7 +1,10 @@
 package com.jopagima.school.courses.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,8 +14,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.jopagima.school.courses.domain.Course;
+import com.jopagima.school.courses.domain.CourseAlreadyExistsException;
 
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 
 @ExtendWith (MockitoExtension.class)
@@ -47,6 +52,15 @@ public class DynamoDbCourseRepositoryTest {
         assertEquals("Advanced Java", request.item().get("name").s());
         assertEquals("30", request.item().get("maxCapacity").n());
     }
+
+    @Test
+    void shouldTranslateConditionalCheckFailureToDomainException() {
+        Course course = Course.create("c-001", "Advanced Java", 30);
+        when(dynamoDbClient.putItem(any(PutItemRequest.class)))
+                .thenThrow(ConditionalCheckFailedException.builder().build());
+
+        assertThrows(CourseAlreadyExistsException.class, () -> repository.save(course));
+    }    
 
 
 
