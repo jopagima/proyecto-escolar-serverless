@@ -8,7 +8,7 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 2 (Cursos)
-Día: 2 (en curso)
+Día: 2 (cerrado) — pendiente Día 3
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -32,11 +32,10 @@ Día: 2 (en curso)
   Curso-Alumno modelada como adjacency list (Curso: PK=COURSE#<id>/SK=METADATA;
   Matrícula: PK=COURSE#<id>/SK=STUDENT#<id>), más GSI `StudentCoursesIndex`
   (GSI1PK/GSI1SK, proyección KEYS_ONLY). 3 tests de CDK assertions en verde.
-- Fase 2, Día 2 — En curso: dominio `Course` autovalidado (incluyendo el invariante de
-  negocio `maxCapacity > 0`, primer invariante numérico del proyecto, no solo formato),
-  puerto `CourseRepository`, adaptador `DynamoDbCourseRepository` con TDD reforzado.
-  `CourseEnrollment` explícitamente fuera de alcance de este día, reservado para uno
-  propio.
+- Fase 2, Día 2 — Dominio `Course` autovalidado (invariante `maxCapacity > 0`), puerto
+  `CourseRepository`, adaptador `DynamoDbCourseRepository` con SDK v2 de bajo nivel y
+  `ConditionExpression` atómica. 7 tests en verde (5 dominio + 2 contrato adaptador).
+  `CourseEnrollment` (matrícula) queda fuera de alcance, reservado para día propio.
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
