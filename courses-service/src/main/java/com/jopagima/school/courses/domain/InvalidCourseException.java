@@ -1,0 +1,11 @@
+package com.jopagima.school.courses.domain;
+
+/**
+ * InvalidCourseException
+ */
+public class InvalidCourseException extends RuntimeException {
+    public InvalidCourseException(String message) {
+        super(message);
+    }
+
+}
