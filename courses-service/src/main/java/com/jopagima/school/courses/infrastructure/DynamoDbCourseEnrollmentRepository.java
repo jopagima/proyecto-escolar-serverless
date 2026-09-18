@@ -14,7 +14,10 @@ import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 
 /**
- * DynamoDbCourseEnrollmentRepository
+ * Infrastructure adapter for CourseEnrollmentRepository. countEnrollments() relies on
+ * the adjacency list design from Fase 2 Día 1: all enrollment items for a course share
+ * the same PK, with SK prefixed "STUDENT#", so a single Query with begins_with and
+ * Select.COUNT answers the count without fetching item attributes.
  */
 public class DynamoDbCourseEnrollmentRepository implements CourseEnrollmentRepository {
 
