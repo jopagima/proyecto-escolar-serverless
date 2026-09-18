@@ -10,6 +10,8 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 
 /**
  * DynamoDbCourseEnrollmentRepository
@@ -54,8 +56,25 @@ public class DynamoDbCourseEnrollmentRepository implements CourseEnrollmentRepos
 
 	@Override
 	public int countEnrollments(String courseId) {
-		// TODO Auto-generated method stub
-		throw new UnsupportedOperationException("Unimplemented method 'countEnrollments'");
+        // TODO 7: build a QueryRequest with:
+        //   tableName, select(Select.COUNT),
+        //   keyConditionExpression("PK = :pk AND begins_with(SK, :skPrefix)"),
+        //   expressionAttributeValues mapping ":pk" -> "COURSE#" + courseId,
+        //   ":skPrefix" -> "STUDENT#".
+
+		QueryRequest request = QueryRequest.builder()
+				.tableName(tableName)
+				.select(software.amazon.awssdk.services.dynamodb.model.Select.COUNT)
+				.keyConditionExpression("PK = :pk AND begins_with(SK, :skPrefix)")
+				.expressionAttributeValues(Map.of(
+						":pk", AttributeValue.builder().s("COURSE#" + courseId).build(),
+						":skPrefix", AttributeValue.builder().s("STUDENT#").build()
+				))
+				.build();
+
+        // TODO 8: call dynamoDbClient.query(request) and return response.count().
+		QueryResponse response = dynamoDbClient.query(request);
+		return response.count();
 	}
 
 
