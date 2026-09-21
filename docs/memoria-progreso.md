@@ -8,7 +8,7 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 2 (Cursos)
-Día: 3 (cerrado) — pendiente Día 4 (cierre de Fase 2)
+Día: 4 (en curso — migración a Id parcial: solo Course, ver detalle abajo)
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -44,6 +44,22 @@ Día: 3 (cerrado) — pendiente Día 4 (cierre de Fase 2)
   condicional (mismo patrón que Alumnos/Cursos) + `countEnrollments()` vía Query con
   `begins_with(SK, "STUDENT#")` y `Select.COUNT` sobre el adjacency list del Día 1.
   16 tests en verde en `courses-service` en total.
+- Fase 2, Día 4 (en curso) — `Id` (UUID real, en `commons`) adoptado en `Course`, con
+  una variante propia: `Course.create(name, maxCapacity)` es un factory method que
+  **genera el `Id` internamente** (constructor privado). Confirmado como alineado con
+  `guidelinesHexagonal-serverless.md` §9.3 ("si hay lógica de validación al crear,
+  mover a un factory method y hacer el constructor privado"). **Bloqueo de
+  reconstitución desde persistencia resuelto**: se añade `Course.reconstitute(Id id,
+  String name, int maxCapacity)`, segundo factory público sin revalidación (los datos
+  vienen de la propia tabla DynamoDB, ya de confianza; la invariante ya se garantizó en
+  el `create()` original) — nombre decidido tras valorar alternativas
+  (`fromPersistence`, `restore`, `of`), José mantiene `reconstitute` (término DDD
+  estándar, Vaughn Vernon). `InvalidCourseException` se mantiene por ahora (migración a
+  `ValidationError` pospuesta explícitamente, sin fecha). `CourseEnrollment`, sus
+  repositorios, y el resto del Día 4 (`findById` usando `reconstitute`,
+  `EnrollStudentInCourseUseCase`, `CoursesServiceFactory`) siguen pendientes de aplicar
+  el patrón. `commons` compila con 5 tests en verde (`IdTest`). Reactor completo
+  (5 módulos): 15 tests en `courses-service` a la última verificación, `BUILD SUCCESS`.
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
@@ -86,18 +102,33 @@ Día: 3 (cerrado) — pendiente Día 4 (cierre de Fase 2)
   framework). Cubre las 5 skills originales completas (arquitectura hexagonal, design
   principles, git strategy, testing standards, XP/TDD). Se activa formalmente al cierre
   de la Fase 2 (Día 4), aplicada retroactivamente a Alumnos y Cursos.
-- **4 conflictos entre la guía y el código ya escrito, resueltos a favor de la guía**
-  (decisión explícita del usuario): (1) adoptar `Id` value object en vez de `String id`;
-  (2) adoptar `Optional<T>` (equivalente Java de `Maybe<T>`) para lecturas opcionales,
-  sin migración retroactiva porque no existe ningún `findById` todavía; (3) adoptar
-  `DomainError` único con factory methods, sustituyendo
-  `InvalidStudentException`/`StudentAlreadyExistsException`/`InvalidCourseException`/
-  `CourseAlreadyExistsException`/`InvalidCourseEnrollmentException`/
-  `EnrollmentAlreadyExistsException` — se añade un cuarto `ErrorType` (`alreadyExists`
-  → 409) sobre los tres del original; (4) adoptar naming de tests sin prefijo `should`
-  (lenguaje de dominio) para tests nuevos desde ya, con renombrado retroactivo de los
-  tests ya escritos en la migración de la Skill. Migraciones 1, 3 y 4 aplican
-  retroactivamente al cierre de Fase 2 (Día 4), no antes.
+- **4 conflictos entre la guía hexagonal y el código ya escrito, resueltos por José**:
+  (1) adoptar `Id` (UUID real, no string legible) — **con impacto de contrato de API
+  no trivial**: el servidor pasa a generar el ID, el cliente deja de decidirlo; se
+  aplica solo a `courses-service` por ahora (Fase 2 Día 4), la migración retroactiva de
+  `students-service` (Lambda ya en producción) queda para un día dedicado futuro que
+  deberá incluir el cambio de contrato; (2) `Optional<T>` para lecturas opcionales,
+  sin migración retroactiva pendiente (no había `findById` implementado); (3) **dos
+  tipos de error único, no uno solo**: `ValidationError` (formato/invariante, siempre
+  HTTP 422) y `DomainError` (`notFound`→404, `alreadyExists`→409, `other`→400) —
+  decisión final de José, ajustada respecto a la propuesta inicial de un único
+  `DomainError` con `ErrorType.validation`; (4) naming de tests sin prefijo `should`
+  para tests nuevos, renombrado retroactivo de los ya escritos pendiente. Migración de
+  `Course`/`CourseEnrollment` a `Id`+`ValidationError`/`DomainError`: en curso, parcial
+  (ver Día 4 arriba) — `Course` usa un factory method (`Course.create(name,
+  maxCapacity)`) que genera el `Id` internamente (constructor privado), variante propia
+  de José sobre lo propuesto originalmente (constructor público recibiendo `Id`).
+- **Patrón de reconstitución de entidades desde persistencia**: cuando una entidad
+  tiene un factory method público con constructor privado (ej. `Course.create(...)`,
+  que valida y genera `Id`), la reconstrucción desde el adaptador de persistencia usa
+  un **segundo factory público**, `reconstitute(Id, ...)`, sin revalidar (los datos ya
+  son de confianza) — no un constructor público expuesto sin más. Decidido en Fase 2
+  Día 4, apoyado en `guidelinesHexagonal-serverless.md` §9.3 ("Organización de clase":
+  admite más de un constructor/factory público) y §9.1 (nombres autoexplicativos que
+  distingan intención: `create` = nuevo, `reconstitute` = ya existente). Nombre
+  evaluado frente a alternativas (`fromPersistence`, `restore`, `of`); José mantiene
+  `reconstitute` (término DDD estándar, Vaughn Vernon). Patrón a repetir en cualquier
+  entidad futura con factory method + Id autogenerado.
 - **Git Strategy**: Conventional Commits con descripción ≤50 caracteres, adoptado desde
   ya para commits nuevos. Feature branches: se mantiene el flujo actual de commits
   directos a `main`, porque el pipeline self-mutating de Fase 1 Día 4 tiene su etapa
@@ -165,13 +196,15 @@ Día: 3 (cerrado) — pendiente Día 4 (cierre de Fase 2)
 - (Cognito y S3 presigned: aún no implementados, pendientes)
 
 ## Pendiente / próximo día
-Fase 2, Día 4 (cierre de fase): `EnrollStudentInCourseUseCase` — primer UseCase real del
-proyecto, orquestando `countEnrollments()` → `EnrollmentEligibilityService.canEnroll()` →
-`enroll()`. Activación formal de la Skill de hexagonal (`guidelinesHexagonal-serverless.md`)
-con migración retroactiva completa: `Id` value object, `DomainError` único, renombrado de
-tests sin `should`, extracción de UseCases de los handlers de Alumnos y Cursos,
-`InMemoryStudentRepository`/`InMemoryCourseRepository`, `StudentsServiceFactory`/
-`CoursesServiceFactory`.
+Fase 2, Día 4 (continúa): aplicar `Course.reconstitute(...)` en
+`DynamoDbCourseRepository.findById(...)` (ya con test y método listos, pendiente de
+que José lo integre y verifique en build). Migrar `CourseEnrollment` y sus
+repositorios a `Id` (mismo patrón que `Course`, pendiente). Completar
+`EnrollStudentInCourseUseCase` (TODOs 10-13) y `CoursesServiceFactory`. Migración de
+`InvalidCourseException`/`CourseAlreadyExistsException` a `ValidationError`/
+`DomainError`: pospuesta explícitamente por José, sin fecha fija.
+Tras cerrar Día 4 (Fase 2 completa): activación formal de la Skill de hexagonal con
+migración retroactiva a Alumnos.
 
 **Tras el cierre de la Fase 2, antes de abrir la Fase 3 (Exámenes), dos días fijos
 reforzados por el material de certificación AWS Developer (`Developing on AWS`,
