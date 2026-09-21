@@ -37,7 +37,7 @@ public class DynamoDbCourseRepositoryTest {
 
     @Test 
     void shouldSaveCourseWithCompositeKeyAndConditionExpression() {
-        Course course = Course.create("c-001", "Advanced Java", 30);
+        Course course = Course.create("Advanced Java", 30);
 
         repository.save(course);
 
@@ -47,7 +47,8 @@ public class DynamoDbCourseRepositoryTest {
         PutItemRequest request = requestCaptor.getValue();
         assertEquals(TABLE_NAME, request.tableName());
         assertEquals("attribute_not_exists(PK)", request.conditionExpression());
-        assertEquals("COURSE#c-001", request.item().get("PK").s());
+
+        assertEquals("COURSE#" + course.getId(), request.item().get("PK").s());
         assertEquals("METADATA", request.item().get("SK").s());
         assertEquals("Advanced Java", request.item().get("name").s());
         assertEquals("30", request.item().get("maxCapacity").n());
@@ -55,7 +56,7 @@ public class DynamoDbCourseRepositoryTest {
 
     @Test
     void shouldTranslateConditionalCheckFailureToDomainException() {
-        Course course = Course.create("c-001", "Advanced Java", 30);
+        Course course = Course.create("Advanced Java", 30);
         when(dynamoDbClient.putItem(any(PutItemRequest.class)))
                 .thenThrow(ConditionalCheckFailedException.builder().build());
 

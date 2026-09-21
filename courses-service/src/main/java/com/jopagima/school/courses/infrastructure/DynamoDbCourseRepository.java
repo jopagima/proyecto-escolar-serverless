@@ -32,6 +32,7 @@ public class DynamoDbCourseRepository implements CourseRepository {
         //   (AttributeValue.builder().n(String.valueOf(course.getMaxCapacity())).build()
         //   — note: numbers in DynamoDB attribute values are always strings on the wire).
 
+        
         Map<String, AttributeValue> item = Map.of("PK", AttributeValue.builder().s("COURSE#" + course.getId()).build(),
                 "SK", AttributeValue.builder().s("METADATA").build(),
                 "name", AttributeValue.builder().s(course.getName()).build(),
@@ -51,7 +52,7 @@ public class DynamoDbCourseRepository implements CourseRepository {
         try{
             dynamoDbClient.putItem(request);
         } catch (ConditionalCheckFailedException e) {
-            throw new CourseAlreadyExistsException(course.getId());
+            throw new CourseAlreadyExistsException("Course " + course.getId() + " already exists");
         }         
 	}
 

@@ -1,9 +1,12 @@
 package com.jopagima.school.courses.domain;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
+
+
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
+import com.jopagima.school.commons.domain.*;
 
 /**
  * Course is self-validating: no invalid Course instance should ever exist in memory.
@@ -11,36 +14,35 @@ import org.junit.jupiter.api.Test;
  * not just a format check — distinct from the blank/format checks on id and name.
  */
 public class CourseTest {
+     private static final String UUID_PATTERN = "[a-f0-9]{8}(?:-[a-f0-9]{4}){4}[a-f0-9]{8}";
     @Test 
     void shouldCreateCourseWithValidData() {
-        Course course = Course.create("c-001", "Advance Java", 30);
 
-        assertEquals("c-001", course.getId());
+        
+        Course course = Course.create("Advance Java", 30);
+
+        Id id =  course.getId();
+        assertTrue(Pattern.compile(UUID_PATTERN).matcher(id.toString()).matches());
         assertEquals("Advance Java", course.getName());
         assertEquals(30, course.getMaxCapacity());
     }
-    @Test
-    void shouldRejectBlankId() {
-        assertThrows(InvalidCourseException.class,
-                () -> Course.create(" ", "Advanced Java", 30));
-    }  
 
     @Test
     void shouldRejectBlankName() {
         assertThrows(InvalidCourseException.class,
-                () -> Course.create("c-001", " ", 30));
+                () -> Course.create( " ", 30));
     }    
     
     @Test
     void shouldRejectZeroCapacity() {
         assertThrows(InvalidCourseException.class,
-                () -> Course.create("c-001", "Advanced Java", 0));
+                () -> Course.create("Advanced Java", 0));
     }
     
     @Test
     void shouldRejectNegativeCapacity() {
         assertThrows(InvalidCourseException.class,
-                () -> Course.create("c-001", "Advanced Java", -5));
+                () -> Course.create("Advanced Java", -5));
     }    
 
 }

@@ -1,24 +1,25 @@
 package com.jopagima.school.courses.domain;
 
+import com.jopagima.school.commons.domain.*;
+
 /**
  * Course
  */
 public class Course {
 
-    private final String id;
+    private final Id id;
     private final String name;
     private final int maxCapacity;
 
-    private Course(String id, String name, int maxCapacity) {
+    private Course(Id id, String name, int maxCapacity) {
         this.id = id;
         this.name = name;
         this.maxCapacity = maxCapacity;
     }
 
-    public static Course create(String id, String name, int maxCapacity) {
-        if (id == null || id.trim().isEmpty()) {
-            throw new InvalidCourseException("Course id cannot be blank");
-        }
+    public static Course create(String name, int maxCapacity) {
+        Id id = Id.generateUniqueIdentifier();
+
         if (name == null || name.trim().isEmpty()) {
             throw new InvalidCourseException("Course name cannot be blank");
         }
@@ -29,9 +30,10 @@ public class Course {
         return new Course(id, name, maxCapacity);
     }
 
-    public String getId() {
+    public Id  getId() {
         return id;
     }
+
 
     public String getName() {
         return name;
