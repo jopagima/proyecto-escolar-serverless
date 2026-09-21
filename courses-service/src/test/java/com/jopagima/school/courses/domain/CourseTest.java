@@ -45,4 +45,15 @@ public class CourseTest {
                 () -> Course.create("Advanced Java", -5));
     }    
 
+    @Test
+    void reconstitutesCourseFromExistingId() {
+        Id id = Id.generateUniqueIdentifier();
+
+        Course course = Course.reconstitute(id, "Advanced Java", 30);
+
+        assertEquals(id, course.getId());
+        assertEquals("Advanced Java", course.getName());
+        assertEquals(30, course.getMaxCapacity());
+    }    
+
 }

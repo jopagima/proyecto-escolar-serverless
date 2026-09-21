@@ -30,6 +30,16 @@ public class Course {
         return new Course(id, name, maxCapacity);
     }
 
+    /**
+     * Rebuilds a Course already known to exist, from data already trusted (this
+     * project's own DynamoDB table) — never used with external/untrusted input. No
+     * revalidation: the invariants were already enforced by create() the moment this
+     * Course was first persisted.
+     */
+    public static Course reconstitute(Id id, String name, int maxCapacity) {
+        return new Course(id, name, maxCapacity);
+    }    
+
     public Id  getId() {
         return id;
     }
