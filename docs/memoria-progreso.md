@@ -173,13 +173,31 @@ tests sin `should`, extracción de UseCases de los handlers de Alumnos y Cursos,
 `InMemoryStudentRepository`/`InMemoryCourseRepository`, `StudentsServiceFactory`/
 `CoursesServiceFactory`.
 
+**Tras el cierre de la Fase 2, antes de abrir la Fase 3 (Exámenes), dos días fijos
+reforzados por el material de certificación AWS Developer (`Developing on AWS`,
+módulos 5-6, 12 y 14) — dejan de ser notas especulativas, pasan a planificación
+concreta:**
+- **Fase 2, Día 5 — S3 presigned URL (foto de alumno) + Cognito (grupos de roles)**:
+  pendiente desde la Fase 1, retomado aquí explícitamente. El curso de certificación
+  confirma que ambos son bloques de examen con peso real (Módulos 5-6 y 12), no solo
+  decisiones arquitectónicas de este proyecto — valor certificable directo, no solo
+  de portfolio.
+- **Fase 2, Día 6 — Observabilidad (CloudWatch + X-Ray)**: el curso lo trata como
+  módulo propio completo (Módulo 14 de 15) — deja de ser una nota "a evaluar si" y pasa
+  a ser un día de trabajo concreto, con alcance a definir (métricas custom vía EMF,
+  trazas X-Ray sobre la cadena API Gateway→Lambda→DynamoDB ya desplegada).
+
 ## Notas y dudas abiertas
 - Race condition entre `countEnrollments()` y `enroll()` en `CourseEnrollment` (Fase 2
   Día 3): aceptada conscientemente para el volumen de tráfico de este PoC. Solución
   correcta identificada para el futuro: `TransactWriteItems` con contador atómico en el
   Item de Curso, si el proyecto evolucionara hacia tráfico concurrente real.
-- Evaluar en Fase 2/3 si se introduce X-Ray/CloudWatch EMF como capa transversal de
-  observabilidad (servicio de la hoja de ruta original).
-- Cognito con grupos de roles sigue pendiente de implementar.
 - Ningún recurso con coste fijo por tiempo salvo CodePipeline/CodeBuild (aceptado) —
   no aplica la salvaguarda de `cdk destroy` entre sesiones más allá de eso.
+- Contrastado contra el material oficial de certificación AWS Developer (`Developing on
+  AWS`, guía de estudiante v4.6.4): confirma compatibilidad total con el stack del
+  proyecto (IAM, S3, DynamoDB con GSI, Lambda, API Gateway, Cognito, CloudWatch/X-Ray).
+  Única discrepancia sin impacto: el curso usa AWS SAM como IaC de referencia en su
+  capstone; este proyecto mantiene CDK (decisión ya fijada, no se reabre) — si el
+  examen pregunta por sintaxis SAM específica, el código CDK no prepara para ese
+  detalle, aunque los conceptos de IaC sí son transferibles.
