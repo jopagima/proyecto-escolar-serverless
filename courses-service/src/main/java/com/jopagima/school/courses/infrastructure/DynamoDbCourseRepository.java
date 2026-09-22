@@ -9,7 +9,12 @@ import com.jopagima.school.courses.domain.CourseRepository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
+import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+
+import com.jopagima.school.commons.domain.Id;
+import java.util.Optional;
 
 /**
  * DynamoDbCourseRepository
@@ -55,6 +60,36 @@ public class DynamoDbCourseRepository implements CourseRepository {
             throw new CourseAlreadyExistsException("Course " + course.getId() + " already exists");
         }         
 	}
+
+    @Override
+    public Optional<Course> findById(Id id) {
+        // TODO 7: implement findById using dynamoDbClient.getItem() and
+        //   Optional.ofNullable() to return an Optional<Course>.
+
+        Map<String, AttributeValue> key = Map.of("PK", AttributeValue.builder().s("COURSE#" + id).build(),
+                "SK", AttributeValue.builder().s("METADATA").build());
+
+        GetItemRequest request = GetItemRequest.builder()
+                .tableName(tableName)
+                .key(key)
+                .build();
+
+        GetItemResponse response = dynamoDbClient.getItem(request); 
+
+        if (response.item() == null || response.item().isEmpty()) {
+            return Optional.empty();
+        }
+
+
+        var item = response.item();
+        Id idFromDataBase = Id.generateFromPlainTextIdentifier(item.get("id").s());
+        String name = item.get("name").s();
+        int maxCapacity = Integer.parseInt(item.get("maxCapacity").n());
+        Course course =  Course.reconstitute(idFromDataBase, name, maxCapacity);
+        return Optional.of(course);
+            
+
+    } 
 
 
 

@@ -1,24 +1,26 @@
 package com.jopagima.school.courses.infrastructure;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
+import com.jopagima.school.commons.domain.Id;
+import com.jopagima.school.courses.domain.Course;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import com.jopagima.school.courses.domain.Course;
-import com.jopagima.school.courses.domain.CourseAlreadyExistsException;
-
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
-import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.*;
+
+import java.util.Map;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.jopagima.school.courses.domain.CourseAlreadyExistsException;
 
 @ExtendWith (MockitoExtension.class)
 public class DynamoDbCourseRepositoryTest {
@@ -63,6 +65,25 @@ public class DynamoDbCourseRepositoryTest {
         assertThrows(CourseAlreadyExistsException.class, () -> repository.save(course));
     }    
 
+    @Test
+    void findsCourseByIdWhenItExists() {
+        Id id = Id.generateUniqueIdentifier();
+        when(dynamoDbClient.getItem(any(GetItemRequest.class))).thenReturn(
+                GetItemResponse.builder().item(Map.of(
+                        "PK", AttributeValue.builder().s("COURSE#" + id).build(),
+                        "SK", AttributeValue.builder().s("METADATA").build(),
+                        "id", AttributeValue.builder().s(id.toString()).build(),
+                        "name", AttributeValue.builder().s("Advanced Java").build(),
+                        "maxCapacity", AttributeValue.builder().n("30").build()
+                )).build());
+
+        Optional<Course> found = repository.findById(id);
+
+        assertTrue(found.isPresent());
+        assertEquals(id, found.get().getId());
+        assertEquals("Advanced Java", found.get().getName());
+        assertEquals(30, found.get().getMaxCapacity());
+    }
 
 
 }
