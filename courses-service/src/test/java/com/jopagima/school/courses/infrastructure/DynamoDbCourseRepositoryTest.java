@@ -85,5 +85,13 @@ public class DynamoDbCourseRepositoryTest {
         assertEquals(30, found.get().getMaxCapacity());
     }
 
+    @Test
+    void returnsEmptyWhenCourseDoesNotExist() {
+        when(dynamoDbClient.getItem(any(GetItemRequest.class)))
+                .thenReturn(GetItemResponse.builder().build());
 
+        Optional<Course> found = repository.findById(Id.generateUniqueIdentifier());
+
+        assertTrue(found.isEmpty());
+    }
 }
