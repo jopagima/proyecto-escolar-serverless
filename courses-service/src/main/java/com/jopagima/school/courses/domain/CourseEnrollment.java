@@ -1,5 +1,7 @@
 package com.jopagima.school.courses.domain;
 
+import com.jopagima.school.commons.domain.Id;
+
 /**
  * Design decision: CourseEnrollment is an independent domain aggregate from Course,
  * even though both persist as items in the same DynamoDB table under the same PK
@@ -8,16 +10,16 @@ package com.jopagima.school.courses.domain;
  */
 public class CourseEnrollment {
 
-    private final String courseId;
+    private final Id courseId;
     private final String studentId;
 
-    private CourseEnrollment(String courseId, String studentId) {
+    private CourseEnrollment(Id courseId, String studentId) {
         this.courseId = courseId;
         this.studentId = studentId;
     }
 
 
-    public String getCourseId() {
+    public Id getCourseId() {
         return courseId;
     }
 
@@ -25,8 +27,8 @@ public class CourseEnrollment {
         return studentId;
     }
 
-    public static CourseEnrollment create(String courseId, String studentId) {
-        if (courseId == null || courseId.trim().isEmpty()) {
+    public static CourseEnrollment create(Id courseId, String studentId) {
+        if (courseId == null) {
             throw new InvalidCourseEnrollmentException("Course ID cannot be blank");    
         }
         if (studentId == null || studentId.trim().isEmpty()) {

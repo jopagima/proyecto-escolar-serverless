@@ -1,6 +1,6 @@
 package com.jopagima.school.courses.domain;
 
-
+import com.jopagima.school.commons.domain.Id;
 
 /**
  * Port: enroll() persists the enrollment (unique per courseId+studentId, enforced via
@@ -11,7 +11,7 @@ package com.jopagima.school.courses.domain;
 public interface CourseEnrollmentRepository {
     void enroll(CourseEnrollment enrollment) throws EnrollmentAlreadyExistsException;
 
-    int countEnrollments(String courseId);
+    int countEnrollments(Id courseId);
 
 
 }

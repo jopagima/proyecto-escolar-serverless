@@ -5,6 +5,7 @@ import java.util.Map;
 import com.jopagima.school.courses.domain.CourseEnrollment;
 import com.jopagima.school.courses.domain.CourseEnrollmentRepository;
 import com.jopagima.school.courses.domain.EnrollmentAlreadyExistsException;
+import com.jopagima.school.commons.domain.Id;
 
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
@@ -52,13 +53,13 @@ public class DynamoDbCourseEnrollmentRepository implements CourseEnrollmentRepos
 		try{
             dynamoDbClient.putItem(request);
         } catch (ConditionalCheckFailedException e) {
-            throw new EnrollmentAlreadyExistsException(enrollment.getCourseId(), enrollment.getStudentId());
+            throw new EnrollmentAlreadyExistsException(""+enrollment.getCourseId(), enrollment.getStudentId());
         } 
 		
 	}
 
 	@Override
-	public int countEnrollments(String courseId) {
+	public int countEnrollments(Id courseId) {
         // TODO 7: build a QueryRequest with:
         //   tableName, select(Select.COUNT),
         //   keyConditionExpression("PK = :pk AND begins_with(SK, :skPrefix)"),

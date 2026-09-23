@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
+import com.jopagima.school.commons.domain.Id;
+
 /**
  * CourseEnrollment is a domain aggregate independent of Course, even though both share
  * the same DynamoDB table via the adjacency list pattern (see CoursesTableConstruct,
@@ -13,21 +15,23 @@ import org.junit.jupiter.api.Test;
 public class CourseEnrollmentTest {
     @Test 
     void createsEnrollmentWithValidCourseAndStudent() {
-        CourseEnrollment enrollment = CourseEnrollment.create("c-001", "s-001");
+        Id courseId = Id.generateUniqueIdentifier();
+        CourseEnrollment enrollment = CourseEnrollment.create(courseId, "s-001");
 
-        assertEquals("c-001", enrollment.getCourseId());
+        assertEquals(courseId, enrollment.getCourseId());
         assertEquals("s-001", enrollment.getStudentId());
     }
 
     @Test
     void doesNotAllowBlankCourseId() {
         assertThrows(InvalidCourseEnrollmentException.class,
-                () -> CourseEnrollment.create(" ", "s-001"));
+                () -> CourseEnrollment.create(null, "s-001"));
     }  
     
     @Test
     void doesNotAllowBlankStudentId() {
+        Id courseId = Id.generateUniqueIdentifier();
         assertThrows(InvalidCourseEnrollmentException.class,
-                () -> CourseEnrollment.create("c-001", ""));
+                () -> CourseEnrollment.create(courseId, ""));
     }    
 }

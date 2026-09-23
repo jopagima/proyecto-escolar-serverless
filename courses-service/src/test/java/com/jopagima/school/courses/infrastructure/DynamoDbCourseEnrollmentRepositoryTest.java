@@ -15,6 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.jopagima.school.courses.domain.CourseEnrollment;
 import com.jopagima.school.courses.domain.EnrollmentAlreadyExistsException;
+import com.jopagima.school.commons.domain.Id;
+
 
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
@@ -39,7 +41,8 @@ public class DynamoDbCourseEnrollmentRepositoryTest {
 
     @Test 
     void savesEnrollmentWithCompositeKeyAndConditionExpression() {
-        CourseEnrollment enrollment =  CourseEnrollment.create("c-001", "s-001");
+        Id courseId = Id.generateUniqueIdentifier();
+        CourseEnrollment enrollment =  CourseEnrollment.create(courseId, "s-001");
 
         repository.enroll(enrollment);
 
@@ -49,13 +52,14 @@ public class DynamoDbCourseEnrollmentRepositoryTest {
         PutItemRequest request = requestCaptor.getValue();
         assertEquals(TABLE_NAME, request.tableName());
         assertEquals("attribute_not_exists(PK)", request.conditionExpression());
-        assertEquals("COURSE#c-001", request.item().get("PK").s());
+        assertEquals("COURSE#"+courseId, request.item().get("PK").s());
         assertEquals("STUDENT#s-001", request.item().get("SK").s());
     }    
 
     @Test
     void translatesConditionalCheckFailureToDomainException() {
-        CourseEnrollment enrollment =  CourseEnrollment.create("c-001", "s-001");
+        Id courseId = Id.generateUniqueIdentifier();
+        CourseEnrollment enrollment =  CourseEnrollment.create(courseId, "s-001");
         when(dynamoDbClient.putItem(any(PutItemRequest.class)))
                 .thenThrow(ConditionalCheckFailedException.builder().build());
 
@@ -67,7 +71,9 @@ public class DynamoDbCourseEnrollmentRepositoryTest {
         when(dynamoDbClient.query(any(QueryRequest.class)))
                 .thenReturn(QueryResponse.builder().count(12).build());
 
-        int count = repository.countEnrollments("c-001");
+         Id courseId = Id.generateUniqueIdentifier();
+
+        int count = repository.countEnrollments(courseId);
 
         assertEquals(12, count);
 
@@ -77,7 +83,7 @@ public class DynamoDbCourseEnrollmentRepositoryTest {
         QueryRequest request = requestCaptor.getValue();
         assertEquals(TABLE_NAME, request.tableName());
         assertEquals(Select.COUNT, request.select());
-        assertEquals("COURSE#c-001", request.expressionAttributeValues().get(":pk").s());
+        assertEquals("COURSE#"+courseId, request.expressionAttributeValues().get(":pk").s());
         assertEquals("STUDENT#", request.expressionAttributeValues().get(":skPrefix").s());
     }    
 }
