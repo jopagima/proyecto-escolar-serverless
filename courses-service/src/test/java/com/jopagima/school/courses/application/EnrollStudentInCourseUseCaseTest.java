@@ -2,7 +2,6 @@ package com.jopagima.school.courses.application;
 
 
 import com.jopagima.school.commons.domain.Id;
-import com.jopagima.school.commons.domain.DomainError;
 import com.jopagima.school.courses.domain.*;
 import org.junit.jupiter.api.Test;
 
@@ -12,9 +11,9 @@ public class EnrollStudentInCourseUseCaseTest {
     @Test
     void enrollsStudentWhenCourseHasCapacity() {
         Course course = Course.create("Advanced Java", 30);
-        InMemoryCourseRepository courseRepository = new InMemoryCourseRepository();
+        CourseRepository courseRepository = new InMemoryCourseRepository();
         courseRepository.save(course);
-        InMemoryCourseEnrollmentRepository enrollmentRepository = new InMemoryCourseEnrollmentRepository();
+        CourseEnrollmentRepository enrollmentRepository = new InMemoryCourseEnrollmentRepository();
 
         EnrollStudentInCourseUseCase useCase =
                 new EnrollStudentInCourseUseCase(courseRepository, enrollmentRepository);
