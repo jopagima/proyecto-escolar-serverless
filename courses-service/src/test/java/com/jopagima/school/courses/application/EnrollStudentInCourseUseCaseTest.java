@@ -26,6 +26,16 @@ public class EnrollStudentInCourseUseCaseTest {
         assertEquals(1, enrollmentRepository.countEnrollments(course.getId()));
     } 
     
+    @Test
+    void doesNotAllowEnrollmentWhenCourseDoesNotExist() {
+        CourseRepository courseRepository = new InMemoryCourseRepository();
+        CourseEnrollmentRepository enrollmentRepository = new InMemoryCourseEnrollmentRepository();
 
+        EnrollStudentInCourseUseCase useCase =
+                new EnrollStudentInCourseUseCase(courseRepository, enrollmentRepository);
+
+        assertThrows(InvalidCourseException.class, () -> useCase.execute(
+                Id.generateUniqueIdentifier(), "s-001"));
+    }
 
 }

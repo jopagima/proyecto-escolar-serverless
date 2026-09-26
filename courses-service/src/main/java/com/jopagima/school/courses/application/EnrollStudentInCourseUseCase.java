@@ -3,6 +3,7 @@ package com.jopagima.school.courses.application;
 import com.jopagima.school.courses.domain.CourseEnrollment;
 import com.jopagima.school.courses.domain.CourseEnrollmentRepository;
 import com.jopagima.school.courses.domain.CourseRepository;
+import com.jopagima.school.courses.domain.InvalidCourseException;
 import com.jopagima.school.commons.domain.Id;
 
 public class EnrollStudentInCourseUseCase {
@@ -22,11 +23,15 @@ public class EnrollStudentInCourseUseCase {
         // This would typically involve checking if the course exists,
         // if the student is already enrolled, and if the course has capacity.
 
+        
+        courseRepository.findById(courseId).orElseThrow(() -> new InvalidCourseException("Course " + courseId + " not found"));
+
         CourseEnrollment courseEnrollment =  CourseEnrollment.create(courseId, studentId);
         courseEnrollmentRepository.enroll(courseEnrollment);
 
         // TODO 10: find the course via courseRepository.findById(id); if empty, throw
         //   DomainError.createNotFound("Course " + courseId + " not found").
+
 
         // TODO 11: count current enrollments via
         //   courseEnrollmentRepository.countEnrollments(id).
