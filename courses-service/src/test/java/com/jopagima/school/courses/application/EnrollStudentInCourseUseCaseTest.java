@@ -38,4 +38,18 @@ public class EnrollStudentInCourseUseCaseTest {
                 Id.generateUniqueIdentifier(), "s-001"));
     }
 
+    @Test
+    void doesNotAllowEnrollmentWhenCourseIsAtFullCapacity() {
+        Course course = Course.create("Advanced Java", 1);
+        CourseRepository courseRepository = new InMemoryCourseRepository();
+        courseRepository.save(course);
+        CourseEnrollmentRepository enrollmentRepository = new InMemoryCourseEnrollmentRepository();
+        enrollmentRepository.enroll(CourseEnrollment.create(course.getId(), "s-001"));
+
+        EnrollStudentInCourseUseCase useCase =
+                new EnrollStudentInCourseUseCase(courseRepository, enrollmentRepository);
+
+        assertThrows(InvalidCourseEnrollmentException.class, () -> useCase.execute(course.getId(), "s-002"));
+    }    
+
 }
