@@ -16,22 +16,24 @@ public class CourseEnrollmentTest {
     @Test 
     void createsEnrollmentWithValidCourseAndStudent() {
         Id courseId = Id.generateUniqueIdentifier();
-        CourseEnrollment enrollment = CourseEnrollment.create(courseId, "s-001");
+        Id studentId = Id.generateUniqueIdentifier();
+        CourseEnrollment enrollment = CourseEnrollment.create(courseId, studentId);
 
         assertEquals(courseId, enrollment.getCourseId());
-        assertEquals("s-001", enrollment.getStudentId());
+        assertEquals(studentId, enrollment.getStudentId());
     }
 
     @Test
     void doesNotAllowBlankCourseId() {
+        Id studentId = Id.generateUniqueIdentifier();
         assertThrows(InvalidCourseEnrollmentException.class,
-                () -> CourseEnrollment.create(null, "s-001"));
+                () -> CourseEnrollment.create(null, studentId));
     }  
     
     @Test
     void doesNotAllowBlankStudentId() {
         Id courseId = Id.generateUniqueIdentifier();
         assertThrows(InvalidCourseEnrollmentException.class,
-                () -> CourseEnrollment.create(courseId, ""));
+                () -> CourseEnrollment.create(courseId, null));
     }    
 }

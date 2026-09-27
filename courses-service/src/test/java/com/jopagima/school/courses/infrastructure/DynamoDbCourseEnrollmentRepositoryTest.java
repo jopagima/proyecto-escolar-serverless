@@ -42,7 +42,8 @@ public class DynamoDbCourseEnrollmentRepositoryTest {
     @Test 
     void savesEnrollmentWithCompositeKeyAndConditionExpression() {
         Id courseId = Id.generateUniqueIdentifier();
-        CourseEnrollment enrollment =  CourseEnrollment.create(courseId, "s-001");
+        Id studentId = Id.generateUniqueIdentifier();
+        CourseEnrollment enrollment =  CourseEnrollment.create(courseId, studentId);
 
         repository.enroll(enrollment);
 
@@ -53,13 +54,14 @@ public class DynamoDbCourseEnrollmentRepositoryTest {
         assertEquals(TABLE_NAME, request.tableName());
         assertEquals("attribute_not_exists(PK)", request.conditionExpression());
         assertEquals("COURSE#"+courseId, request.item().get("PK").s());
-        assertEquals("STUDENT#s-001", request.item().get("SK").s());
+        assertEquals("STUDENT#"+studentId, request.item().get("SK").s());
     }    
 
     @Test
     void translatesConditionalCheckFailureToDomainException() {
         Id courseId = Id.generateUniqueIdentifier();
-        CourseEnrollment enrollment =  CourseEnrollment.create(courseId, "s-001");
+        Id studentId = Id.generateUniqueIdentifier();
+        CourseEnrollment enrollment =  CourseEnrollment.create(courseId, studentId);
         when(dynamoDbClient.putItem(any(PutItemRequest.class)))
                 .thenThrow(ConditionalCheckFailedException.builder().build());
 

@@ -53,7 +53,7 @@ public class DynamoDbCourseEnrollmentRepository implements CourseEnrollmentRepos
 		try{
             dynamoDbClient.putItem(request);
         } catch (ConditionalCheckFailedException e) {
-            throw new EnrollmentAlreadyExistsException(""+enrollment.getCourseId(), enrollment.getStudentId());
+            throw new EnrollmentAlreadyExistsException(enrollment.getCourseId(), enrollment.getStudentId());
         } 
 		
 	}

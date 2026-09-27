@@ -11,9 +11,9 @@ import com.jopagima.school.commons.domain.Id;
 public class CourseEnrollment {
 
     private final Id courseId;
-    private final String studentId;
+    private final Id studentId;
 
-    private CourseEnrollment(Id courseId, String studentId) {
+    private CourseEnrollment(Id courseId, Id studentId) {
         this.courseId = courseId;
         this.studentId = studentId;
     }
@@ -23,15 +23,15 @@ public class CourseEnrollment {
         return courseId;
     }
 
-    public String getStudentId() {
+    public Id getStudentId() {
         return studentId;
     }
 
-    public static CourseEnrollment create(Id courseId, String studentId) {
+    public static CourseEnrollment create(Id courseId, Id studentId) {
         if (courseId == null) {
             throw new InvalidCourseEnrollmentException("Course ID cannot be blank");    
         }
-        if (studentId == null || studentId.trim().isEmpty()) {
+        if (studentId == null) {
             throw new InvalidCourseEnrollmentException("Student ID cannot be blank");
         }
            return new CourseEnrollment(courseId, studentId);
