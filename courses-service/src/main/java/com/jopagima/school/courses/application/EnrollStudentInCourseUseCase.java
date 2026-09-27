@@ -20,37 +20,17 @@ public class EnrollStudentInCourseUseCase {
         this.courseEnrollmentRepository = courseEnrollmentRepository;
     }
 
-    public void execute(Id courseId, String studentId) {
-        // Implementation of the use case to enroll a student in a course
-        // This would typically involve checking if the course exists,
-        // if the student is already enrolled, and if the course has capacity.
+    public void execute(String courseId, String studentId) {
 
-        
-
-
-        // TODO 10: find the course via courseRepository.findById(id); if empty, throw
-        //   DomainError.createNotFound("Course " + courseId + " not found").
-
-        Course course = courseRepository.findById(courseId).orElseThrow(() -> new InvalidCourseException("Course " + courseId + " not found"));
-
-        
-        // TODO 11: count current enrollments via
-        //   courseEnrollmentRepository.countEnrollments(id).
-        int currentEnrollments = courseEnrollmentRepository.countEnrollments(courseId);
-
-        // TODO 12: ask EnrollmentEligibilityService.canEnroll(currentCount,
-        //   course.getMaxCapacity()); if false, throw
-        //   DomainError.create("Course " + courseId + " is at full capacity").
-
+        Id courseIdentifier  = Id.generateFromPlainTextIdentifier(courseId);
+        Course course = courseRepository.findById(courseIdentifier).orElseThrow(() -> new InvalidCourseException("Course " + courseId + " not found"));
+        int currentEnrollments = courseEnrollmentRepository.countEnrollments(courseIdentifier);
         if(course.getMaxCapacity() <= currentEnrollments) {
             throw new InvalidCourseEnrollmentException("Course " + courseId + " is at full capacity");
         }
         
-
-        // TODO 13: build new CourseEnrollment(id, Id.generateFromPlainTextIdentifier(studentId))
-        //   and persist it via courseEnrollmentRepository.enroll(...).
-
-        CourseEnrollment courseEnrollment =  CourseEnrollment.create(courseId, studentId);
+        Id studentIdentifier = Id.generateFromPlainTextIdentifier(studentId);
+        CourseEnrollment courseEnrollment =  CourseEnrollment.create(courseIdentifier, studentIdentifier);
         courseEnrollmentRepository.enroll(courseEnrollment);
     }
 }

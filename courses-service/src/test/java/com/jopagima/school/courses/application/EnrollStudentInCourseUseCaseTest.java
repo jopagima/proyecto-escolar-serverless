@@ -18,9 +18,9 @@ public class EnrollStudentInCourseUseCaseTest {
         EnrollStudentInCourseUseCase useCase =
                 new EnrollStudentInCourseUseCase(courseRepository, enrollmentRepository);
 
-        String studentId = "st-12345";
+        Id studentId = Id.generateUniqueIdentifier();
 
-        useCase.execute(course.getId(), studentId);
+        useCase.execute(course.getId().toString(), studentId.toString());
 
         assertEquals(1, enrollmentRepository.countEnrollments(course.getId()));
     } 
@@ -29,12 +29,13 @@ public class EnrollStudentInCourseUseCaseTest {
     void doesNotAllowEnrollmentWhenCourseDoesNotExist() {
         CourseRepository courseRepository = new InMemoryCourseRepository();
         CourseEnrollmentRepository enrollmentRepository = new InMemoryCourseEnrollmentRepository();
-
+        Id studentId = Id.generateUniqueIdentifier();
+        
         EnrollStudentInCourseUseCase useCase =
                 new EnrollStudentInCourseUseCase(courseRepository, enrollmentRepository);
 
         assertThrows(InvalidCourseException.class, () -> useCase.execute(
-                Id.generateUniqueIdentifier(), "s-001"));
+                Id.generateUniqueIdentifier().toString(), studentId.toString()));
     }
 
     @Test
@@ -43,12 +44,13 @@ public class EnrollStudentInCourseUseCaseTest {
         CourseRepository courseRepository = new InMemoryCourseRepository();
         courseRepository.save(course);
         CourseEnrollmentRepository enrollmentRepository = new InMemoryCourseEnrollmentRepository();
-        enrollmentRepository.enroll(CourseEnrollment.create(course.getId(), "s-001"));
+        Id studentId = Id.generateUniqueIdentifier();
+        enrollmentRepository.enroll(CourseEnrollment.create(course.getId(), studentId));
 
         EnrollStudentInCourseUseCase useCase =
                 new EnrollStudentInCourseUseCase(courseRepository, enrollmentRepository);
 
-        assertThrows(InvalidCourseEnrollmentException.class, () -> useCase.execute(course.getId(), "s-002"));
+        assertThrows(InvalidCourseEnrollmentException.class, () -> useCase.execute(course.getId().toString(), studentId.toString()));
     }    
 
 }
