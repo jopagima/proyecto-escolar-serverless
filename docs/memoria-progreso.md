@@ -8,7 +8,7 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 2 (Cursos)
-Día: 4 (en curso — migración a Id parcial: solo Course, ver detalle abajo)
+Día: 4 (en curso — solo pendiente migrar excepciones a ValidationError/DomainError)
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -54,12 +54,27 @@ Día: 4 (en curso — migración a Id parcial: solo Course, ver detalle abajo)
   vienen de la propia tabla DynamoDB, ya de confianza; la invariante ya se garantizó en
   el `create()` original) — nombre decidido tras valorar alternativas
   (`fromPersistence`, `restore`, `of`), José mantiene `reconstitute` (término DDD
-  estándar, Vaughn Vernon). `InvalidCourseException` se mantiene por ahora (migración a
-  `ValidationError` pospuesta explícitamente, sin fecha). `CourseEnrollment`, sus
-  repositorios, y el resto del Día 4 (`findById` usando `reconstitute`,
-  `EnrollStudentInCourseUseCase`, `CoursesServiceFactory`) siguen pendientes de aplicar
-  el patrón. `commons` compila con 5 tests en verde (`IdTest`). Reactor completo
-  (5 módulos): 15 tests en `courses-service` a la última verificación, `BUILD SUCCESS`.
+  estándar, Vaughn Vernon). `InvalidCourseException`/`InvalidCourseEnrollmentException`
+  se mantienen por ahora (migración a `ValidationError`/`DomainError` pospuesta
+  explícitamente por José, sin fecha fija todavía — se aplica igual al
+  `EnrollStudentInCourseUseCase` de hoy). `CourseEnrollment` y sus repositorios
+  (`CourseEnrollmentRepository`/`InMemoryCourseEnrollmentRepository`/
+  `DynamoDbCourseEnrollmentRepository`) migrados a `Id`. `findById` en
+  `DynamoDbCourseRepository` usando `Course.reconstitute(...)`, con sus 2 tests
+  (`findsCourseByIdWhenItExists`/`returnsEmptyWhenCourseDoesNotExist`) en verde.
+  **`EnrollStudentInCourseUseCase` completo** (TODOs 10-13): orquesta
+  `courseRepository.findById(courseId)` → `countEnrollments(courseId)` →
+  `EnrollmentEligibilityService.canEnroll(...)` →
+  `courseEnrollmentRepository.enroll(...)`, con sus 3 tests en verde
+  (`enrollsStudentWhenCourseHasCapacity`, `doesNotAllowEnrollmentWhenCourseDoesNotExist`,
+  `doesNotAllowEnrollmentWhenCourseIsAtFullCapacity`), todos declarando las
+  dependencias por el tipo de puerto (`CourseRepository`/`CourseEnrollmentRepository`),
+  nunca por la implementación `InMemory` concreta. **`CoursesServiceFactory`
+  pospuesta**: sin ningún Lambda handler de Cursos todavía que la consuma, no se crea
+  infraestructura sin consumidor real (misma regla de "microservicio a microservicio,
+  no todo de golpe") — se implementará el día que se construya el endpoint HTTP de
+  matrícula. `commons` compila con 5 tests en verde (`IdTest`). `courses-service`:
+  21 tests en verde, `BUILD SUCCESS` en reactor completo.
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
@@ -129,8 +144,22 @@ Día: 4 (en curso — migración a Id parcial: solo Course, ver detalle abajo)
   evaluado frente a alternativas (`fromPersistence`, `restore`, `of`); José mantiene
   `reconstitute` (término DDD estándar, Vaughn Vernon). Patrón a repetir en cualquier
   entidad futura con factory method + Id autogenerado.
+- **`CourseCapacity` (Value Object) y reorganización `domain/` en subpaquetes**:
+  decisión tomada en Fase 2 Día 4, **programada para la migración retroactiva al
+  cierre de Fase 2** (no aplicada hoy). La guía nombra explícitamente
+  `Quantity`/`Percentage` (ej. `CourseCapacity`) como candidato de VO (§4.3) y ya
+  define la estructura `domain/entities/`+`domain/valueobjects/`+`domain/services/`+
+  `domain/repositories/` en §1 — hoy `Course`/`CourseEnrollment` viven planos en
+  `domain/`, desviación pendiente de corregir. Alcance ampliado a `students-service`:
+  `Email` (VO) para `Student`, ya anticipado por la guía como "candidato inmediato...
+  si el campo se repite" (§4.3). `firstName`/`lastName` se quedan como `String` plano
+  (sin regla propia más allá de no-blanco, no hay caso de VO todavía).
 - **Git Strategy**: Conventional Commits con descripción ≤50 caracteres, adoptado desde
-  ya para commits nuevos. Feature branches: se mantiene el flujo actual de commits
+  ya para commits nuevos. **Granularidad reforzada (decisión de José, Fase 2 Día 4)**:
+  un commit por cada test individual que pasa a verde, nunca agrupado por bloque/día —
+  aplicación estricta de §10 de la guía (*"Commit en cada test en verde — historial
+  granular y reversible"*), que hasta ahora se venía dando agrupado por feature/día.
+  Feature branches: se mantiene el flujo actual de commits
   directos a `main`, porque el pipeline self-mutating de Fase 1 Día 4 tiene su etapa
   `Source` apuntando explícitamente a `main` — cambiarlo rompería el trigger automático
   por commit. Nota abierta si en el futuro se prefiere adoptar feature branches con
@@ -196,15 +225,18 @@ Día: 4 (en curso — migración a Id parcial: solo Course, ver detalle abajo)
 - (Cognito y S3 presigned: aún no implementados, pendientes)
 
 ## Pendiente / próximo día
-Fase 2, Día 4 (continúa): aplicar `Course.reconstitute(...)` en
-`DynamoDbCourseRepository.findById(...)` (ya con test y método listos, pendiente de
-que José lo integre y verifique en build). Migrar `CourseEnrollment` y sus
-repositorios a `Id` (mismo patrón que `Course`, pendiente). Completar
-`EnrollStudentInCourseUseCase` (TODOs 10-13) y `CoursesServiceFactory`. Migración de
-`InvalidCourseException`/`CourseAlreadyExistsException` a `ValidationError`/
-`DomainError`: pospuesta explícitamente por José, sin fecha fija.
+Fase 2, Día 4 (continúa, único bloque pendiente): migrar
+`InvalidCourseException`/`InvalidCourseEnrollmentException` (dominio) y
+`CourseAlreadyExistsException` (adaptador) a `ValidationError`/`DomainError` —
+pospuesta explícitamente por José a más tarde del mismo día, sin fecha fija todavía.
+Todo lo demás del Día 4 ya cerrado (ver detalle arriba): `Id`, `reconstitute`,
+`CourseEnrollment`+repositorios migrados, `EnrollStudentInCourseUseCase` completo con
+sus 3 tests. `CoursesServiceFactory` pospuesta a cuando exista el Lambda handler de
+matrícula (decisión explícita, no se crea infraestructura sin consumidor).
 Tras cerrar Día 4 (Fase 2 completa): activación formal de la Skill de hexagonal con
-migración retroactiva a Alumnos.
+migración retroactiva a Alumnos y Cursos — incluye ahora explícitamente: reorganizar
+`domain/` en `entities/`/`valueobjects/`/`services/`/`repositories/`, extraer
+`CourseCapacity` (Course) y `Email` (Student) como Value Objects.
 
 **Tras el cierre de la Fase 2, antes de abrir la Fase 3 (Exámenes), dos días fijos
 reforzados por el material de certificación AWS Developer (`Developing on AWS`,
