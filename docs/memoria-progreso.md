@@ -8,7 +8,7 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 2 (Cursos)
-Día: 4 (en curso — solo pendiente migrar excepciones a ValidationError/DomainError)
+Día: 4 (cerrado) — pendiente Día 5 (Skill hexagonal, ver "Pendiente" abajo)
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -225,29 +225,41 @@ Día: 4 (en curso — solo pendiente migrar excepciones a ValidationError/Domain
 - (Cognito y S3 presigned: aún no implementados, pendientes)
 
 ## Pendiente / próximo día
-Fase 2, Día 4 (continúa, único bloque pendiente): migrar
-`InvalidCourseException`/`InvalidCourseEnrollmentException` (dominio) y
-`CourseAlreadyExistsException` (adaptador) a `ValidationError`/`DomainError` —
-pospuesta explícitamente por José a más tarde del mismo día, sin fecha fija todavía.
-Todo lo demás del Día 4 ya cerrado (ver detalle arriba): `Id`, `reconstitute`,
-`CourseEnrollment`+repositorios migrados, `EnrollStudentInCourseUseCase` completo con
-sus 3 tests. `CoursesServiceFactory` pospuesta a cuando exista el Lambda handler de
-matrícula (decisión explícita, no se crea infraestructura sin consumidor).
-Tras cerrar Día 4 (Fase 2 completa): activación formal de la Skill de hexagonal con
-migración retroactiva a Alumnos y Cursos — incluye ahora explícitamente: reorganizar
-`domain/` en `entities/`/`valueobjects/`/`services/`/`repositories/`, extraer
-`CourseCapacity` (Course) y `Email` (Student) como Value Objects.
+**Fase 2, Día 4 — cerrado.** Todos los bloques resueltos: `Id`/`ValidationError`/
+`DomainError` en `commons`; `Course` con `create()`/`reconstitute()`; `CourseEnrollment`
+y ambos repositorios (`CourseRepository`/`CourseEnrollmentRepository`, adaptadores
+DynamoDB + InMemory) migrados a `Id` (incluye `studentId`, migrado hoy);
+`EnrollStudentInCourseUseCase` completo con sus 3 tests, firma pública en primitivos
+(`execute(String, String)`, conversión interna a `Id`) conforme a §4.2 de la guía.
+`courses-service`: 21 tests en verde, reactor completo (5 módulos) en `BUILD SUCCESS`.
 
-**Tras el cierre de la Fase 2, antes de abrir la Fase 3 (Exámenes), dos días fijos
+**Migración de excepciones a `ValidationError`/`DomainError`**: pospuesta
+definitivamente hasta la activación formal de la Skill de hexagonal (no "más tarde de
+hoy" como se planteó en un primer momento — José confirma que se aborda junto con el
+resto de la migración retroactiva, sin fecha propia). Afecta a
+`InvalidStudentException`/`StudentAlreadyExistsException`/`InvalidCourseException`/
+`CourseAlreadyExistsException`/`InvalidCourseEnrollmentException`.
+`CoursesServiceFactory`: pospuesta a cuando exista el Lambda handler de matrícula
+(decisión explícita, no se crea infraestructura sin consumidor real).
+
+**Próxima sesión — Fase 2, Día 5**: activación formal de la Skill de hexagonal con
+migración retroactiva completa a Alumnos y Cursos — incluye: excepciones→
+`ValidationError`/`DomainError` (todas las listadas arriba), reorganizar `domain/` en
+`entities/`/`valueobjects/`/`services/`/`repositories/`, extraer `CourseCapacity`
+(Course) y `Email` (Student) como Value Objects, extraer UseCases de los handlers de
+Alumnos, `InMemoryStudentRepository`, `StudentsServiceFactory`, renombrado de tests
+`should*` a lenguaje de dominio.
+
+**Tras la Skill de hexagonal (Día 5), antes de abrir la Fase 3 (Exámenes), dos días más
 reforzados por el material de certificación AWS Developer (`Developing on AWS`,
 módulos 5-6, 12 y 14) — dejan de ser notas especulativas, pasan a planificación
 concreta:**
-- **Fase 2, Día 5 — S3 presigned URL (foto de alumno) + Cognito (grupos de roles)**:
+- **Fase 2, Día 6 — S3 presigned URL (foto de alumno) + Cognito (grupos de roles)**:
   pendiente desde la Fase 1, retomado aquí explícitamente. El curso de certificación
   confirma que ambos son bloques de examen con peso real (Módulos 5-6 y 12), no solo
   decisiones arquitectónicas de este proyecto — valor certificable directo, no solo
   de portfolio.
-- **Fase 2, Día 6 — Observabilidad (CloudWatch + X-Ray)**: el curso lo trata como
+- **Fase 2, Día 7 — Observabilidad (CloudWatch + X-Ray)**: el curso lo trata como
   módulo propio completo (Módulo 14 de 15) — deja de ser una nota "a evaluar si" y pasa
   a ser un día de trabajo concreto, con alcance a definir (métricas custom vía EMF,
   trazas X-Ray sobre la cadena API Gateway→Lambda→DynamoDB ya desplegada).
