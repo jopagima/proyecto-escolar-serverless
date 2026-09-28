@@ -58,7 +58,7 @@ public class DynamoDbCourseRepository implements CourseRepository {
         try{
             dynamoDbClient.putItem(request);
         } catch (ConditionalCheckFailedException e) {
-            throw DomainError.createAlreadyExists("Course already exists: Course " + course.getId() + " already exists");
+            throw DomainError.createAlreadyExists("Course " + course.getId() + " already exists");
         }         
 	}
 
