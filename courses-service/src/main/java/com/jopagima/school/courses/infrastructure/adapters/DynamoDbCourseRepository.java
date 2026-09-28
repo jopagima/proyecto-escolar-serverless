@@ -40,6 +40,7 @@ public class DynamoDbCourseRepository implements CourseRepository {
         
         Map<String, AttributeValue> item = Map.of("PK", AttributeValue.builder().s("COURSE#" + course.getId()).build(),
                 "SK", AttributeValue.builder().s("METADATA").build(),
+                "id", AttributeValue.builder().s(course.getId().toString()).build(),
                 "name", AttributeValue.builder().s(course.getName()).build(),
                 "maxCapacity", AttributeValue.builder().n(String.valueOf(course.getMaxCapacity())).build());    
 

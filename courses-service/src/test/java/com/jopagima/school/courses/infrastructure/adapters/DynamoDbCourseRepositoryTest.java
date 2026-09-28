@@ -54,6 +54,7 @@ public class DynamoDbCourseRepositoryTest {
         assertEquals("METADATA", request.item().get("SK").s());
         assertEquals("Advanced Java", request.item().get("name").s());
         assertEquals("30", request.item().get("maxCapacity").n());
+        assertEquals(course.getId().toString(), request.item().get("id").s());
     }
 
     @Test
