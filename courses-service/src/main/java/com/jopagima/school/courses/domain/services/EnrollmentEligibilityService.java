@@ -1,6 +1,5 @@
 package com.jopagima.school.courses.domain.services;
 
-import com.jopagima.school.courses.infrastructure.DynamoDbCourseEnrollmentRepository;
 
 /**
  * Domain Service (see guidelinesHexagonal-serverless.md §4.4): stateless pure function

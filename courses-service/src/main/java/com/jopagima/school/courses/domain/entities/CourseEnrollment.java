@@ -1,6 +1,7 @@
-package com.jopagima.school.courses.domain;
+package com.jopagima.school.courses.domain.entities;
 
 import com.jopagima.school.commons.domain.Id;
+import com.jopagima.school.commons.domain.ValidationError;
 
 /**
  * Design decision: CourseEnrollment is an independent domain aggregate from Course,
@@ -29,10 +30,10 @@ public class CourseEnrollment {
 
     public static CourseEnrollment create(Id courseId, Id studentId) {
         if (courseId == null) {
-            throw new InvalidCourseEnrollmentException("Course ID cannot be blank");    
+            throw ValidationError.create("Course ID cannot be blank");    
         }
         if (studentId == null) {
-            throw new InvalidCourseEnrollmentException("Student ID cannot be blank");
+            throw ValidationError.create("Student ID cannot be blank");
         }
            return new CourseEnrollment(courseId, studentId);
     }

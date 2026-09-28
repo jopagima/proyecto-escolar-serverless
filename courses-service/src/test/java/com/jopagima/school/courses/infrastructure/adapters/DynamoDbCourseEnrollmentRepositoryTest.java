@@ -1,4 +1,4 @@
-package com.jopagima.school.courses.infrastructure;
+package com.jopagima.school.courses.infrastructure.adapters;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -13,8 +13,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.jopagima.school.courses.domain.CourseEnrollment;
-import com.jopagima.school.courses.domain.EnrollmentAlreadyExistsException;
+import com.jopagima.school.courses.domain.entities.CourseEnrollment;
+import com.jopagima.school.commons.domain.DomainError;
 import com.jopagima.school.commons.domain.Id;
 
 
@@ -65,7 +65,7 @@ public class DynamoDbCourseEnrollmentRepositoryTest {
         when(dynamoDbClient.putItem(any(PutItemRequest.class)))
                 .thenThrow(ConditionalCheckFailedException.builder().build());
 
-        assertThrows(EnrollmentAlreadyExistsException.class, () -> repository.enroll(enrollment));
+        assertThrows(DomainError.class, () -> repository.enroll(enrollment));
     }
     
     @Test

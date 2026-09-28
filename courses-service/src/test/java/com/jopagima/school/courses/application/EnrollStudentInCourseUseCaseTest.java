@@ -1,8 +1,10 @@
 package com.jopagima.school.courses.application;
 
 
+import com.jopagima.school.commons.domain.DomainError;
 import com.jopagima.school.commons.domain.Id;
-import com.jopagima.school.courses.domain.*;
+import com.jopagima.school.courses.domain.repositories.*;
+import com.jopagima.school.courses.domain.entities.*;
 import org.junit.jupiter.api.Test;
 
 
@@ -34,7 +36,7 @@ public class EnrollStudentInCourseUseCaseTest {
         EnrollStudentInCourseUseCase useCase =
                 new EnrollStudentInCourseUseCase(courseRepository, enrollmentRepository);
 
-        assertThrows(InvalidCourseException.class, () -> useCase.execute(
+        assertThrows(DomainError.class, () -> useCase.execute(
                 Id.generateUniqueIdentifier().toString(), studentId.toString()));
     }
 
@@ -50,7 +52,7 @@ public class EnrollStudentInCourseUseCaseTest {
         EnrollStudentInCourseUseCase useCase =
                 new EnrollStudentInCourseUseCase(courseRepository, enrollmentRepository);
 
-        assertThrows(InvalidCourseEnrollmentException.class, () -> useCase.execute(course.getId().toString(), studentId.toString()));
+        assertThrows(DomainError.class, () -> useCase.execute(course.getId().toString(), studentId.toString()));
     }    
 
 }

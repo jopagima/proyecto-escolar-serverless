@@ -1,6 +1,7 @@
-package com.jopagima.school.courses.domain;
+package com.jopagima.school.courses.domain.repositories;
 
 import com.jopagima.school.commons.domain.Id;
+import com.jopagima.school.courses.domain.entities.CourseEnrollment;
 
 /**
  * Port: enroll() persists the enrollment (unique per courseId+studentId, enforced via
@@ -9,7 +10,7 @@ import com.jopagima.school.commons.domain.Id;
  * adjacency list pattern (Fase 2 Día 1) makes cheap via a single Query.
  */
 public interface CourseEnrollmentRepository {
-    void enroll(CourseEnrollment enrollment) throws EnrollmentAlreadyExistsException;
+    void enroll(CourseEnrollment enrollment);
 
     int countEnrollments(Id courseId);
 

@@ -1,10 +1,9 @@
-package com.jopagima.school.courses.infrastructure;
+package com.jopagima.school.courses.infrastructure.adapters;
 
 import java.util.Map;
 
-import com.jopagima.school.courses.domain.Course;
-import com.jopagima.school.courses.domain.CourseAlreadyExistsException;
-import com.jopagima.school.courses.domain.CourseRepository;
+import com.jopagima.school.courses.domain.entities.Course;
+import com.jopagima.school.courses.domain.repositories.CourseRepository;
 
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
@@ -13,6 +12,7 @@ import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 
+import com.jopagima.school.commons.domain.DomainError;
 import com.jopagima.school.commons.domain.Id;
 import java.util.Optional;
 
@@ -30,7 +30,7 @@ public class DynamoDbCourseRepository implements CourseRepository {
     }
 
 	@Override
-	public void save(Course course) throws CourseAlreadyExistsException {
+	public void save(Course course) {
         // TODO 4: build the item Map<String, AttributeValue> with:
         //   PK = "COURSE#" + course.getId(), SK = "METADATA",
         //   name as a string attribute, maxCapacity as a NUMBER attribute
@@ -53,11 +53,11 @@ public class DynamoDbCourseRepository implements CourseRepository {
 
         // TODO 6: call dynamoDbClient.putItem(request), catching
         //   ConditionalCheckFailedException and rethrowing as
-        //   CourseAlreadyExistsException(course.getId()).
+        //   DomainError.createAlreadyExists(...).
         try{
             dynamoDbClient.putItem(request);
         } catch (ConditionalCheckFailedException e) {
-            throw new CourseAlreadyExistsException("Course " + course.getId() + " already exists");
+            throw DomainError.createAlreadyExists("Course already exists: Course " + course.getId() + " already exists");
         }         
 	}
 

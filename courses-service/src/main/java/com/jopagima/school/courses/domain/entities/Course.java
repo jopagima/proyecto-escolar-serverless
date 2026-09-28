@@ -1,6 +1,7 @@
-package com.jopagima.school.courses.domain;
+package com.jopagima.school.courses.domain.entities;
 
 import com.jopagima.school.commons.domain.*;
+import com.jopagima.school.courses.domain.valueobjects.CourseCapacity;
 
 /**
  * Course
@@ -9,9 +10,9 @@ public class Course {
 
     private final Id id;
     private final String name;
-    private final int maxCapacity;
+    private final CourseCapacity maxCapacity;
 
-    private Course(Id id, String name, int maxCapacity) {
+    private Course(Id id, String name, CourseCapacity maxCapacity) {
         this.id = id;
         this.name = name;
         this.maxCapacity = maxCapacity;
@@ -21,13 +22,11 @@ public class Course {
         Id id = Id.generateUniqueIdentifier();
 
         if (name == null || name.trim().isEmpty()) {
-            throw new InvalidCourseException("Course name cannot be blank");
+            throw ValidationError.create("Course name cannot be blank");
         }
-        if (maxCapacity <= 0) {
-            throw new InvalidCourseException("Course max capacity must be greater than zero");
-        }
+        CourseCapacity capacity = CourseCapacity.create(maxCapacity);
         
-        return new Course(id, name, maxCapacity);
+        return new Course(id, name, capacity);
     }
 
     /**
@@ -37,7 +36,7 @@ public class Course {
      * Course was first persisted.
      */
     public static Course reconstitute(Id id, String name, int maxCapacity) {
-        return new Course(id, name, maxCapacity);
+        return new Course(id, name, CourseCapacity.reconstitute(maxCapacity));
     }    
 
     public Id  getId() {
@@ -50,6 +49,6 @@ public class Course {
     }
 
     public int getMaxCapacity() {
-        return maxCapacity;
+        return maxCapacity.value();
     }
 }

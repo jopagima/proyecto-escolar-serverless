@@ -1,10 +1,10 @@
-package com.jopagima.school.courses.infrastructure;
+package com.jopagima.school.courses.infrastructure.adapters;
 
 import java.util.Map;
 
-import com.jopagima.school.courses.domain.CourseEnrollment;
-import com.jopagima.school.courses.domain.CourseEnrollmentRepository;
-import com.jopagima.school.courses.domain.EnrollmentAlreadyExistsException;
+import com.jopagima.school.courses.domain.entities.CourseEnrollment;
+import com.jopagima.school.courses.domain.repositories.CourseEnrollmentRepository;
+import com.jopagima.school.commons.domain.DomainError;
 import com.jopagima.school.commons.domain.Id;
 
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -31,7 +31,7 @@ public class DynamoDbCourseEnrollmentRepository implements CourseEnrollmentRepos
     }
 
     @Override
-	public void enroll(CourseEnrollment enrollment) throws EnrollmentAlreadyExistsException {
+	public void enroll(CourseEnrollment enrollment) {
 		// TODO 4: build the item Map<String, AttributeValue> with:
         //   PK = "COURSE#" + enrollment.getCourseId(), SK = "STUDENT#" + enrollment.getStudentId().
 
@@ -48,12 +48,12 @@ public class DynamoDbCourseEnrollmentRepository implements CourseEnrollmentRepos
 
         // TODO 6: call dynamoDbClient.putItem(request), catching
         //   ConditionalCheckFailedException and rethrowing as
-        //   EnrollmentAlreadyExistsException(enrollment.getCourseId(), enrollment.getStudentId()).
+        //   DomainError.createAlreadyExists(...).
 
 		try{
             dynamoDbClient.putItem(request);
         } catch (ConditionalCheckFailedException e) {
-            throw new EnrollmentAlreadyExistsException(enrollment.getCourseId(), enrollment.getStudentId());
+            throw DomainError.createAlreadyExists("Enrollment already exists for course: " + enrollment.getCourseId() + " and student: " + enrollment.getStudentId());
         } 
 		
 	}

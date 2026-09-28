@@ -1,4 +1,4 @@
-package com.jopagima.school.courses.domain;
+package com.jopagima.school.courses.domain.entities;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -16,7 +16,7 @@ import com.jopagima.school.commons.domain.*;
 public class CourseTest {
      private static final String UUID_PATTERN = "[a-f0-9]{8}(?:-[a-f0-9]{4}){4}[a-f0-9]{8}";
     @Test 
-    void shouldCreateCourseWithValidData() {
+    void createsCourseWithValidData() {
 
         
         Course course = Course.create("Advance Java", 30);
@@ -28,20 +28,20 @@ public class CourseTest {
     }
 
     @Test
-    void shouldRejectBlankName() {
-        assertThrows(InvalidCourseException.class,
+    void doesNotAllowBlankName() {
+        assertThrows(ValidationError.class,
                 () -> Course.create( " ", 30));
     }    
     
     @Test
-    void shouldRejectZeroCapacity() {
-        assertThrows(InvalidCourseException.class,
+    void doesNotAllowZeroCapacity() {
+        assertThrows(ValidationError.class,
                 () -> Course.create("Advanced Java", 0));
     }
     
     @Test
-    void shouldRejectNegativeCapacity() {
-        assertThrows(InvalidCourseException.class,
+    void doesNotAllowNegativeCapacity() {
+        assertThrows(ValidationError.class,
                 () -> Course.create("Advanced Java", -5));
     }    
 

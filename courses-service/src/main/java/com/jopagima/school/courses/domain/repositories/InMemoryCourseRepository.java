@@ -1,6 +1,7 @@
-package com.jopagima.school.courses.domain;
+package com.jopagima.school.courses.domain.repositories;
 
 import com.jopagima.school.commons.domain.Id;
+import com.jopagima.school.courses.domain.entities.Course;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -1,9 +1,9 @@
-package com.jopagima.school.courses.domain;
+package com.jopagima.school.courses.domain.repositories;
 
 import java.util.List;
 import java.util.ArrayList;
 import com.jopagima.school.commons.domain.Id;
-import com.jopagima.school.courses.domain.CourseEnrollment;
+import com.jopagima.school.courses.domain.entities.CourseEnrollment;
 
 public class InMemoryCourseEnrollmentRepository implements CourseEnrollmentRepository {
 

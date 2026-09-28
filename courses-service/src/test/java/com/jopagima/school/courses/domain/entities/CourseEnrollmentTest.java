@@ -1,4 +1,4 @@
-package com.jopagima.school.courses.domain;
+package com.jopagima.school.courses.domain.entities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 
 import com.jopagima.school.commons.domain.Id;
+import com.jopagima.school.commons.domain.ValidationError;
 
 /**
  * CourseEnrollment is a domain aggregate independent of Course, even though both share
@@ -26,14 +27,14 @@ public class CourseEnrollmentTest {
     @Test
     void doesNotAllowBlankCourseId() {
         Id studentId = Id.generateUniqueIdentifier();
-        assertThrows(InvalidCourseEnrollmentException.class,
+        assertThrows(ValidationError.class,
                 () -> CourseEnrollment.create(null, studentId));
     }  
     
     @Test
     void doesNotAllowBlankStudentId() {
         Id courseId = Id.generateUniqueIdentifier();
-        assertThrows(InvalidCourseEnrollmentException.class,
+        assertThrows(ValidationError.class,
                 () -> CourseEnrollment.create(courseId, null));
     }    
 }
