@@ -47,7 +47,7 @@ public class RegisterStudentHandler implements RequestHandler<APIGatewayV2HTTPEv
         } catch (JsonProcessingException e) {
             return buildResponse(400, "Malformed JSON body");
         } catch (ValidationError e) {
-            return buildResponse(400, e.getMessage());
+            return buildResponse(422, e.getMessage());
         } catch (DomainError e) {
             return buildResponse(statusFor(e.getType()), e.getMessage());
         }

@@ -45,13 +45,13 @@ public class RegisterStudentHandlerTest {
     }
 
     @Test
-    void shouldReturn400WhenDomainValidationFails() {
+    void shouldReturn422WhenDomainValidationFails() {
         APIGatewayV2HTTPEvent event = eventWithBody(
                 "{\"id\":\"s-001\",\"firstName\":\"\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
 
         APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);
 
-        assertEquals(400, response.getStatusCode());
+        assertEquals(422, response.getStatusCode());
         assertTrue(response.getBody().contains("firstName"));
     }
 
