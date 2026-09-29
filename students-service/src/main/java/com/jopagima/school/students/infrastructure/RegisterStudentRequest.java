@@ -1,7 +1,6 @@
 package com.jopagima.school.students.infrastructure;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.jopagima.school.students.domain.entities.Student;
 
 /**
  * Inbound request DTO for the HTTP boundary. Kept separate from the Student domain
@@ -43,10 +42,5 @@ public class RegisterStudentRequest {
 
     public String getEmail() {
         return email;
-    }
-
-
-    public Student toDomain() {
-        return Student.create(firstName, lastName, email);
     }
 }

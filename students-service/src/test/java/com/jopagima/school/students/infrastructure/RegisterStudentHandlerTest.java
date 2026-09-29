@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jopagima.school.commons.domain.DomainError;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
+import com.jopagima.school.students.application.RegisterStudentUseCase;
 import com.jopagima.school.students.domain.entities.Student;
 import com.jopagima.school.students.domain.repositories.StudentRepository;
 
@@ -37,7 +38,7 @@ public class RegisterStudentHandlerTest {
 
     @BeforeEach
     public void setUp() {
-        handler = new RegisterStudentHandler(studentRepository);
+        handler = new RegisterStudentHandler(new RegisterStudentUseCase(studentRepository));
     }
 
     @Test
