@@ -1,18 +1,16 @@
 package com.jopagima.school.students.domain.entities;
 
-import java.util.regex.Pattern;
-
 import com.jopagima.school.commons.domain.ValidationError;
+import com.jopagima.school.students.domain.valueobjects.Email;
 
 public class Student {
 
-        private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
         private final String id;
         private final String firstName;
         private final String lastName;
-        private final String email;
+        private final Email email;
 
-        private Student(String id, String firstName, String lastName, String email) {
+        private Student(String id, String firstName, String lastName, Email email) {
             this.id = id;
             this.firstName = firstName;
             this.lastName = lastName;
@@ -20,8 +18,8 @@ public class Student {
         }
 
         public static Student create(String id, String firstName, String lastName, String email) {
-            validate(id, firstName, lastName, email);
-            return new Student(id, firstName, lastName, email);
+            validate(id, firstName, lastName);
+            return new Student(id, firstName, lastName, Email.create(email));
         }
 
         public String getId() {
@@ -37,10 +35,10 @@ public class Student {
         }
 
         public String getEmail() {
-            return email;
+            return email.value();
         }
 
-        private static void validate(String id, String firstName, String lastName, String email) {
+        private static void validate(String id, String firstName, String lastName) {
             if (id == null || id.isBlank()) {
                 throw ValidationError.create("id cannot be blank");
             }
@@ -49,12 +47,6 @@ public class Student {
             }
             if (lastName == null || lastName.isBlank()) {
                 throw ValidationError.create("lastName cannot be blank");
-            }
-            if (email == null || email.isBlank()) {
-                throw ValidationError.create("email cannot be blank");
-            }
-            if (!EMAIL_PATTERN.matcher(email).matches()) {
-                throw ValidationError.create("email must be valid");
             }
         }
 }
