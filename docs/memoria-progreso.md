@@ -8,7 +8,7 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 2 (Cursos)
-Día: 4 (cerrado) — pendiente Día 5 (Skill hexagonal, ver "Pendiente" abajo)
+Día: 5 (cerrado) — pendiente Día 6 (retrofit de students-service, ver "Pendiente")
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -75,6 +75,31 @@ Día: 4 (cerrado) — pendiente Día 5 (Skill hexagonal, ver "Pendiente" abajo)
   no todo de golpe") — se implementará el día que se construya el endpoint HTTP de
   matrícula. `commons` compila con 5 tests en verde (`IdTest`). `courses-service`:
   21 tests en verde, `BUILD SUCCESS` en reactor completo.
+- Fase 2, Día 5 — Definida la Skill `hexagonal-retrofit`: spec en
+  `openspec/specs/hexagonal-retrofit.md` y Skill de Claude Code en
+  `.claude/skills/hexagonal-retrofit/SKILL.md` (commiteadas: `docs: add
+  hexagonal-retrofit OpenSpec and skill definition`). La CLI `openspec` no está
+  instalada y se decide no instalarla (la spec funciona como documentación versionada,
+  sin herramienta extra). Claude Code aplicó la Skill a `courses-service` en 11 pasos
+  con `mvn clean install` en verde tras cada uno, sin tocar `students-service`,
+  `commons` ni `infra`. Resultado: `Course`/`CourseEnrollment` en `domain/entities/`,
+  puertos e InMemory en `domain/repositories/`, adaptadores en
+  `infrastructure/adapters/`, `CourseCapacity` como Value Object en
+  `domain/valueobjects/`, las 4 excepciones específicas sustituidas por
+  `ValidationError`/`DomainError`, tests renombrados sin `should`. 21 tests en verde
+  antes y después. **Desviación consciente de la regla de un commit por paso**: José
+  decide comitear el retrofit como un único commit (`refactor(courses): apply
+  hexagonal retrofit`) en vez de aplicar 11 parches uno a uno — los cambios ya estaban
+  en el working tree y reconstruir el historial granular no le aportaba nada en un
+  refactor mecánico sin Lambda desplegada. Para `students-service` (Lambda en
+  producción) se mantiene el criterio de historial granular, pidiendo al agente que
+  comitee él mismo cada paso.
+  **Bug encontrado por el informe del agente**: `DynamoDbCourseRepository.save()` no
+  escribía el atributo `id` que `findById()` lee (habría dado `NullPointerException`
+  contra la tabla real). El test `findsCourseByIdWhenItExists` lo ocultaba porque
+  mockea la respuesta de DynamoDB a mano. Corregido en un commit aparte
+  (`fix(courses): persist id attribute in Course item`), con aserción nueva en
+  `savesCourseWithCompositeKeyAndConditionExpression`. 21 tests en verde.
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
@@ -217,6 +242,16 @@ Día: 4 (cerrado) — pendiente Día 5 (Skill hexagonal, ver "Pendiente" abajo)
   el esperado; si no cuadra, repetir con `mvn clean test`, no asumir que el build está
   realmente al día solo porque no dio error.
 
+- Un test con la respuesta de DynamoDB mockeada a mano puede pasar en verde mientras el
+  código real está roto: `findById` leía un atributo `id` que `save()` nunca escribía
+  (Fase 2 Día 5). Los tests de adaptador que leen deben construir su respuesta a partir
+  de lo que escribe el propio `save()`, o al menos aserciones cruzadas sobre los
+  atributos escritos. Lo detectó el informe de Claude Code, no la suite.
+- Parches generados por un agente sobre un working tree que ya contiene sus cambios no
+  se pueden aplicar con `git apply` (el contexto "antes" ya no existe). Se comprueba con
+  `git apply --reverse --check`. Si el árbol ya está en el estado final, lo más simple
+  es comitear ese estado en vez de reconstruir el historial.
+
 ## Servicios AWS de la hoja de ruta original ya acoplados
 - DynamoDB — Fase 1, Día 1.
 - AWS Lambda — Fase 1, Día 3.
@@ -225,44 +260,43 @@ Día: 4 (cerrado) — pendiente Día 5 (Skill hexagonal, ver "Pendiente" abajo)
 - (Cognito y S3 presigned: aún no implementados, pendientes)
 
 ## Pendiente / próximo día
-**Fase 2, Día 4 — cerrado.** Todos los bloques resueltos: `Id`/`ValidationError`/
-`DomainError` en `commons`; `Course` con `create()`/`reconstitute()`; `CourseEnrollment`
-y ambos repositorios (`CourseRepository`/`CourseEnrollmentRepository`, adaptadores
-DynamoDB + InMemory) migrados a `Id` (incluye `studentId`, migrado hoy);
-`EnrollStudentInCourseUseCase` completo con sus 3 tests, firma pública en primitivos
-(`execute(String, String)`, conversión interna a `Id`) conforme a §4.2 de la guía.
-`courses-service`: 21 tests en verde, reactor completo (5 módulos) en `BUILD SUCCESS`.
+**Fase 2, Día 5 — cerrado** (Skill definida, `courses-service` migrado, bug del
+atributo `id` corregido, mensaje duplicado limpiado). Antes de empezar el Día 6, una
+cosa menor de `courses-service` que quedó abierta:
+- Javadoc desactualizado en `CourseRepository` ("Enrollment operations are
+  intentionally not part of this port yet") — limpiar al inicio del Día 6.
 
-**Migración de excepciones a `ValidationError`/`DomainError`**: pospuesta
-definitivamente hasta la activación formal de la Skill de hexagonal (no "más tarde de
-hoy" como se planteó en un primer momento — José confirma que se aborda junto con el
-resto de la migración retroactiva, sin fecha propia). Afecta a
-`InvalidStudentException`/`StudentAlreadyExistsException`/`InvalidCourseException`/
-`CourseAlreadyExistsException`/`InvalidCourseEnrollmentException`.
-`CoursesServiceFactory`: pospuesta a cuando exista el Lambda handler de matrícula
-(decisión explícita, no se crea infraestructura sin consumidor real).
+**Resuelto, sin commit propio**: `EnrollStudentInCourseUseCase` ya llama a
+`EnrollmentEligibilityService.canEnroll(...)` en vez de comparar
+`currentEnrollments`/`maxCapacity` inline — el cambio quedó incluido dentro del commit
+`refactor(courses): apply hexagonal retrofit` en vez de en un commit aparte (José lo
+confirma tras revisar el código ya comiteado, no fue un paso deliberado de ese commit).
 
-**Próxima sesión — Fase 2, Día 5**: activación formal de la Skill de hexagonal con
-migración retroactiva completa a Alumnos y Cursos — incluye: excepciones→
-`ValidationError`/`DomainError` (todas las listadas arriba), reorganizar `domain/` en
-`entities/`/`valueobjects/`/`services/`/`repositories/`, extraer `CourseCapacity`
-(Course) y `Email` (Student) como Value Objects, extraer UseCases de los handlers de
-Alumnos, `InMemoryStudentRepository`, `StudentsServiceFactory`, renombrado de tests
-`should*` a lenguaje de dominio.
+**Fase 2, Día 6 — retrofit de `students-service`** (Lambda en producción, mayor
+riesgo): aplicar la Skill `hexagonal-retrofit` pidiendo a Claude Code que comitee cada
+paso verificado en verde. Incluye: `Student` con `Id` (cambio de contrato de API: el
+servidor genera el ID, el cliente deja de enviarlo en `RegisterStudentRequest`),
+`Email` como Value Object, extraer `RegisterStudentUseCase` del handler,
+`InMemoryStudentRepository`, `StudentsServiceFactory`, excepciones →
+`ValidationError`/`DomainError`, tests sin `should`. Al terminar, redesplegar vía
+pipeline y reverificar con `curl -i` contra el endpoint real.
+**Decisión abierta antes de empezar**: hoy `RegisterStudentHandler` devuelve **400**
+para datos inválidos y `RegisterStudentHandlerTest` lo asserta. La guía (§6/§7) asigna
+**422** a `ValidationError`. La spec dice a la vez "preservar 201/400/409" y "no
+cambiar aserciones". Hay que elegir: (a) mantener 400 en `students-service` y anotar la
+excepción a la regla de 422, o (b) cambiar a 422 y modificar la aserción del test, lo
+que es un cambio visible para cualquier cliente de la API. Sin decidir.
 
-**Tras la Skill de hexagonal (Día 5), antes de abrir la Fase 3 (Exámenes), dos días más
-reforzados por el material de certificación AWS Developer (`Developing on AWS`,
-módulos 5-6, 12 y 14) — dejan de ser notas especulativas, pasan a planificación
-concreta:**
-- **Fase 2, Día 6 — S3 presigned URL (foto de alumno) + Cognito (grupos de roles)**:
-  pendiente desde la Fase 1, retomado aquí explícitamente. El curso de certificación
-  confirma que ambos son bloques de examen con peso real (Módulos 5-6 y 12), no solo
-  decisiones arquitectónicas de este proyecto — valor certificable directo, no solo
-  de portfolio.
-- **Fase 2, Día 7 — Observabilidad (CloudWatch + X-Ray)**: el curso lo trata como
-  módulo propio completo (Módulo 14 de 15) — deja de ser una nota "a evaluar si" y pasa
-  a ser un día de trabajo concreto, con alcance a definir (métricas custom vía EMF,
-  trazas X-Ray sobre la cadena API Gateway→Lambda→DynamoDB ya desplegada).
+**Fase 2, Día 7 — S3 presigned URL (foto de alumno) + Cognito (grupos de roles)**:
+pendiente desde la Fase 1. El curso de certificación AWS Developer (`Developing on
+AWS`, módulos 5-6 y 12) confirma que ambos son bloques de examen con peso real.
+
+**Fase 2, Día 8 — Observabilidad (CloudWatch + X-Ray)**: módulo 14 de 15 del mismo
+curso. Alcance a definir (métricas custom vía EMF, trazas X-Ray sobre API Gateway →
+Lambda → DynamoDB).
+
+**`CoursesServiceFactory`** sigue pospuesta hasta que exista el Lambda handler de
+matrícula (no se crea infraestructura sin consumidor).
 
 ## Notas y dudas abiertas
 - Race condition entre `countEnrollments()` y `enroll()` en `CourseEnrollment` (Fase 2
