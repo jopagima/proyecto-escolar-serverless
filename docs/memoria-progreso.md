@@ -158,6 +158,13 @@ Día: 5 (cerrado) — pendiente Día 6 (retrofit de students-service, ver "Pendi
   (ver Día 4 arriba) — `Course` usa un factory method (`Course.create(name,
   maxCapacity)`) que genera el `Id` internamente (constructor privado), variante propia
   de José sobre lo propuesto originalmente (constructor público recibiendo `Id`).
+- **Aprobación humana por commit, en cualquier trabajo delegado a un agente**: José no
+  delega la decisión de comitear — antes de cada `git commit`, el agente debe presentar
+  qué cambió, un resumen breve del porqué, y el mensaje de commit propuesto, y esperar
+  confirmación explícita antes de ejecutar el commit. Aplica a toda la Skill
+  `hexagonal-retrofit` (añadido como paso 8 obligatorio en
+  `.claude/skills/hexagonal-retrofit/SKILL.md`, Fase 2 Día 6) y, por extensión, a
+  cualquier Skill futura que comitee en nombre del usuario.
 - **Patrón de reconstitución de entidades desde persistencia**: cuando una entidad
   tiene un factory method público con constructor privado (ej. `Course.create(...)`,
   que valida y genera `Id`), la reconstrucción desde el adaptador de persistencia usa

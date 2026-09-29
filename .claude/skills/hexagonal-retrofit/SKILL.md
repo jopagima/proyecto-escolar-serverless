@@ -33,7 +33,14 @@ runtime behavior. Full contract: `openspec/specs/hexagonal-retrofit.md`.
 7. Run `mvn clean install` from the repo root after every discrete change (one file or
    one rule applied at a time) and stop immediately if any test fails — do not proceed
    to the next file with a red build.
-8. Produce the `migration_report` listing every file touched and why.
+8. **Before running `git commit` for that step**, stop and present: which files
+   changed, a one-paragraph summary of what changed and why, and the proposed commit
+   message. Wait for explicit approval ("sí", "adelante", "commit") before running
+   `git commit`. Do not batch several steps' approvals into one — one approval per
+   commit, in the order the steps are applied. If the user asks for a change instead
+   of approving, apply it, re-run `mvn clean install`, and present the summary again
+   before committing.
+9. Produce the `migration_report` listing every file touched and why.
 
 ## Must not
 
@@ -41,10 +48,16 @@ runtime behavior. Full contract: `openspec/specs/hexagonal-retrofit.md`.
   DynamoDB attribute name/PK-SK format.
 - Introduce new business rules, new validations, or new public methods beyond what
   the retrofit requires.
-- Touch `students-service` until `courses-service`'s migration is verified green
-  end-to-end (sequencing constraint from the project, not technical).
+- Assume a target module's HTTP status codes should stay unchanged, or should
+  change, without an explicit instruction for that module — this is a per-module
+  decision logged in `memoria-progreso.md`, not a default either way.
+- (Sequencing constraint, satisfied as of Fase 2 Día 5: `courses-service` was fully
+  migrated and verified green before `students-service`'s retrofit began.)
 - Modify `RegisterStudentHandler`'s external contract (HTTP status codes, response
   shape) even though its internals change.
 - Commit with a red test — one commit per rule/file applied and verified green, per
   the project's git-strategy discipline already in force (Conventional Commits,
   ≤50 chars, one commit per green test).
+- Run `git commit` without first presenting the change summary and getting explicit
+  approval from the user for that specific commit (step 8) — this applies to every
+  commit in the retrofit, not just the first one.
