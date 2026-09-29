@@ -6,6 +6,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import com.jopagima.school.commons.domain.DomainError;
 import com.jopagima.school.commons.domain.ErrorType;
 import com.jopagima.school.commons.domain.ValidationError;
@@ -43,7 +44,7 @@ public class RegisterStudentHandler implements RequestHandler<APIGatewayV2HTTPEv
             RegisterStudentRequest request = objectMapper.readValue(input.getBody(), RegisterStudentRequest.class);
             Student student = request.toDomain();
             studentRepository.save(student);
-            return buildResponse(201, null);
+            return buildResponse(201, objectMapper.writeValueAsString(Map.of("id", student.getId().toString())));
         } catch (JsonProcessingException e) {
             return buildResponse(400, "Malformed JSON body");
         } catch (ValidationError e) {

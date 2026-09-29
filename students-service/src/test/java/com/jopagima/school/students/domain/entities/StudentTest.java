@@ -1,7 +1,9 @@
 package com.jopagima.school.students.domain.entities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -14,34 +16,32 @@ import com.jopagima.school.commons.domain.ValidationError;
  */
 public class StudentTest {
 
+    private static final String UUID_PATTERN =
+            "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
+
 @Test
     void shouldRejectBlankFirstName() {
         assertThrows(ValidationError.class,
-                () -> Student.create("s-001", " ", "Garcia", "ana.garcia@example.com"));
+                () -> Student.create(" ", "Garcia", "ana.garcia@example.com"));
     }
 
     @Test
     void shouldRejectBlankLastName() {
         assertThrows(ValidationError.class,
-                () -> Student.create("s-001", "Ana", "", "ana.garcia@example.com"));
+                () -> Student.create("Ana", "", "ana.garcia@example.com"));
     }
 
     @Test
     void shouldRejectInvalidEmailFormat() {
         assertThrows(ValidationError.class,
-                () -> Student.create("s-001", "Ana", "Garcia", "not-an-email"));
+                () -> Student.create("Ana", "Garcia", "not-an-email"));
     }
 
     @Test
-    void shouldRejectBlankId() {
-        assertThrows(ValidationError.class,
-                () -> Student.create("", "Ana", "Garcia", "ana.garcia@example.com"));
-    }    
-
-    @Test
     void shouldCreateValidStudentData() {
-        Student student = Student.create("STUDENT#123", "John", "Doe", "john.doe@example.com");
-        assertEquals("STUDENT#123", student.getId());
+        Student student = Student.create("John", "Doe", "john.doe@example.com");
+        assertNotNull(student.getId());
+        assertTrue(student.getId().toString().matches(UUID_PATTERN));
         assertEquals("John", student.getFirstName());
         assertEquals("Doe", student.getLastName());
         assertEquals("john.doe@example.com", student.getEmail());

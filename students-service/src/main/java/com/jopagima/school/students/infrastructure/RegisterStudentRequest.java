@@ -1,24 +1,20 @@
 package com.jopagima.school.students.infrastructure;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.jopagima.school.students.domain.entities.Student;
 
 /**
  * Inbound request DTO for the HTTP boundary. Kept separate from the Student domain
  * entity so that JSON deserialization concerns never leak into the domain layer.
+ * The student id is generated server-side: a client-supplied "id" is ignored.
  */
-
+@JsonIgnoreProperties({"id"})
 public class RegisterStudentRequest {
-    private String id;
     private String firstName;
     private String lastName;
     private String email;
 
     public RegisterStudentRequest() {
-    }
-
-
-    public void setId(String id) {
-        this.id = id;
     }
 
 
@@ -37,10 +33,6 @@ public class RegisterStudentRequest {
     }
 
 
-    public String getId() {
-        return id;
-    }
-
     public String getFirstName() {
         return firstName;
     }
@@ -55,6 +47,6 @@ public class RegisterStudentRequest {
 
 
     public Student toDomain() {
-        return Student.create(id, firstName, lastName, email);
+        return Student.create(firstName, lastName, email);
     }
 }

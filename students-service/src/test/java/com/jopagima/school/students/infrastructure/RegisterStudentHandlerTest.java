@@ -1,6 +1,8 @@
 package com.jopagima.school.students.infrastructure;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -14,6 +16,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2CustomAuthorizerEvent;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jopagima.school.commons.domain.DomainError;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
@@ -22,6 +26,9 @@ import com.jopagima.school.students.domain.repositories.StudentRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class RegisterStudentHandlerTest {
+
+    private static final String UUID_PATTERN =
+            "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
 
     @Mock
     private StudentRepository studentRepository;
@@ -34,20 +41,37 @@ public class RegisterStudentHandlerTest {
     }
 
     @Test
-    void shouldReturn201WhenIsRegisteredSuccessfully() {
-        APIGatewayV2HTTPEvent event = eventWithBody("{\"id\":\"s-001\",\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
+    void shouldReturn201WhenIsRegisteredSuccessfully() throws Exception {
+        APIGatewayV2HTTPEvent event = eventWithBody("{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
         // Implement the test logic here
         APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);
         assertEquals(201, response.getStatusCode());    
         ArgumentCaptor<Student> studentCaptor = ArgumentCaptor.forClass(Student.class);
         verify(studentRepository).save(studentCaptor.capture());
-        assertEquals("s-001", studentCaptor.getValue().getId());
+        assertNotNull(studentCaptor.getValue().getId());
+
+        String returnedId = new ObjectMapper().readTree(response.getBody()).get("id").asText();
+        assertTrue(returnedId.matches(UUID_PATTERN));
+        assertEquals(studentCaptor.getValue().getId().toString(), returnedId);
+    }
+
+    @Test
+    void ignoresClientSuppliedIdAndGeneratesItsOwn() throws Exception {
+        APIGatewayV2HTTPEvent event = eventWithBody(
+                "{\"id\":\"s-001\",\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
+
+        APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);
+
+        assertEquals(201, response.getStatusCode());
+        JsonNode body = new ObjectMapper().readTree(response.getBody());
+        assertNotEquals("s-001", body.get("id").asText());
+        assertTrue(body.get("id").asText().matches(UUID_PATTERN));
     }
 
     @Test
     void shouldReturn422WhenDomainValidationFails() {
         APIGatewayV2HTTPEvent event = eventWithBody(
-                "{\"id\":\"s-001\",\"firstName\":\"\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
+                "{\"firstName\":\"\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
 
         APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);
 
@@ -58,7 +82,7 @@ public class RegisterStudentHandlerTest {
     @Test
     void shouldReturn409WhenStudentAlreadyExists() {
         APIGatewayV2HTTPEvent event = eventWithBody(
-                "{\"id\":\"s-001\",\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
+                "{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
         doThrow(DomainError.createAlreadyExists("Student already exists: s-001"))
                 .when(studentRepository).save(any(Student.class));
 

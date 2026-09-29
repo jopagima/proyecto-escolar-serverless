@@ -37,7 +37,7 @@ public class DynamoDbStudentRepositoryTest {
 
    @Test
    void shouldSaveStudentWithCompositeKeyAndConditionExpression(){
-    Student student = Student.create("s-001", "Ana", "Garcia", "ana.garcia@example.com");
+    Student student = Student.create("Ana", "Garcia", "ana.garcia@example.com");
     repository.save(student);
 
     ArgumentCaptor<PutItemRequest> requestCaptor = ArgumentCaptor.forClass(PutItemRequest.class);
@@ -45,7 +45,7 @@ public class DynamoDbStudentRepositoryTest {
     PutItemRequest request = requestCaptor.getValue();
     assertEquals(TABLE_NAME, request.tableName());
     assertEquals("attribute_not_exists(PK)", request.conditionExpression());
-    assertEquals("STUDENT#s-001", request.item().get("PK").s());
+    assertEquals("STUDENT#" + student.getId(), request.item().get("PK").s());
     assertEquals("METADATA", request.item().get("SK").s());
     assertEquals("Ana", request.item().get("firstName").s());
     assertEquals("Garcia", request.item().get("lastName").s());
@@ -54,7 +54,7 @@ public class DynamoDbStudentRepositoryTest {
 
     @Test
     void shouldTranslateConditionalCheckFailureToDomainException() {
-        Student student =  Student.create("s-001", "Ana", "Garcia", "ana.garcia@example.com");
+        Student student =  Student.create("Ana", "Garcia", "ana.garcia@example.com");
         when(dynamoDbClient.putItem(any(PutItemRequest.class)))
                 .thenThrow(ConditionalCheckFailedException.builder().build());
 
