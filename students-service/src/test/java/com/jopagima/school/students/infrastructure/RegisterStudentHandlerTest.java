@@ -42,7 +42,7 @@ public class RegisterStudentHandlerTest {
     }
 
     @Test
-    void shouldReturn201WhenIsRegisteredSuccessfully() throws Exception {
+    void answersCreatedWithGeneratedIdWhenStudentIsRegistered() throws Exception {
         APIGatewayV2HTTPEvent event = eventWithBody("{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
         // Implement the test logic here
         APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);
@@ -70,7 +70,7 @@ public class RegisterStudentHandlerTest {
     }
 
     @Test
-    void shouldReturn422WhenDomainValidationFails() {
+    void answersUnprocessableEntityWhenStudentDataIsInvalid() {
         APIGatewayV2HTTPEvent event = eventWithBody(
                 "{\"firstName\":\"\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
 
@@ -81,7 +81,7 @@ public class RegisterStudentHandlerTest {
     }
 
     @Test
-    void shouldReturn409WhenStudentAlreadyExists() {
+    void answersConflictWhenStudentAlreadyExists() {
         APIGatewayV2HTTPEvent event = eventWithBody(
                 "{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
         doThrow(DomainError.createAlreadyExists("Student already exists: s-001"))

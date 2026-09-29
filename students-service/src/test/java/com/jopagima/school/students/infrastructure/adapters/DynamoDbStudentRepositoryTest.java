@@ -36,7 +36,7 @@ public class DynamoDbStudentRepositoryTest {
   }  
 
    @Test
-   void shouldSaveStudentWithCompositeKeyAndConditionExpression(){
+   void savesStudentWithCompositeKeyAndConditionExpression(){
     Student student = Student.create("Ana", "Garcia", "ana.garcia@example.com");
     repository.save(student);
 
@@ -53,7 +53,7 @@ public class DynamoDbStudentRepositoryTest {
    } 
 
     @Test
-    void shouldTranslateConditionalCheckFailureToDomainException() {
+    void translatesConditionalCheckFailureToDomainException() {
         Student student =  Student.create("Ana", "Garcia", "ana.garcia@example.com");
         when(dynamoDbClient.putItem(any(PutItemRequest.class)))
                 .thenThrow(ConditionalCheckFailedException.builder().build());

@@ -20,25 +20,25 @@ public class StudentTest {
             "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
 
 @Test
-    void shouldRejectBlankFirstName() {
+    void doesNotAllowBlankFirstName() {
         assertThrows(ValidationError.class,
                 () -> Student.create(" ", "Garcia", "ana.garcia@example.com"));
     }
 
     @Test
-    void shouldRejectBlankLastName() {
+    void doesNotAllowBlankLastName() {
         assertThrows(ValidationError.class,
                 () -> Student.create("Ana", "", "ana.garcia@example.com"));
     }
 
     @Test
-    void shouldRejectInvalidEmailFormat() {
+    void doesNotAllowInvalidEmailFormat() {
         assertThrows(ValidationError.class,
                 () -> Student.create("Ana", "Garcia", "not-an-email"));
     }
 
     @Test
-    void shouldCreateValidStudentData() {
+    void createsStudentWithValidData() {
         Student student = Student.create("John", "Doe", "john.doe@example.com");
         assertNotNull(student.getId());
         assertTrue(student.getId().toString().matches(UUID_PATTERN));
