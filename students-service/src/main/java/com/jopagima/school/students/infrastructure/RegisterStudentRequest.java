@@ -1,6 +1,6 @@
 package com.jopagima.school.students.infrastructure;
 
-import com.jopagima.school.students.domain.Student;
+import com.jopagima.school.students.domain.entities.Student;
 
 /**
  * Inbound request DTO for the HTTP boundary. Kept separate from the Student domain

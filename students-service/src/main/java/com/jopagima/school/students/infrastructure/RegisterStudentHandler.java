@@ -7,9 +7,10 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jopagima.school.students.domain.InvalidStudentException;
-import com.jopagima.school.students.domain.Student;
+import com.jopagima.school.students.domain.entities.Student;
 import com.jopagima.school.students.domain.StudentAlreadyExistsException;
-import com.jopagima.school.students.domain.StudentRepository;
+import com.jopagima.school.students.domain.repositories.StudentRepository;
+import com.jopagima.school.students.infrastructure.adapters.DynamoDbStudentRepository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
 /**
@@ -23,7 +24,7 @@ public class RegisterStudentHandler implements RequestHandler<APIGatewayV2HTTPEv
 
 
     public RegisterStudentHandler() {
-        this(new DynamoDBStudentRepository(DynamoDbClient.create(), System.getenv("TABLE_NAME")));
+        this(new DynamoDbStudentRepository(DynamoDbClient.create(), System.getenv("TABLE_NAME")));
     }
     public RegisterStudentHandler(StudentRepository studentRepository) {
         this.studentRepository = studentRepository;

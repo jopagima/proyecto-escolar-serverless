@@ -1,9 +1,9 @@
-package com.jopagima.school.students.infrastructure;
+package com.jopagima.school.students.infrastructure.adapters;
 
 import java.util.Map;
 
-import com.jopagima.school.students.domain.Student;
-import com.jopagima.school.students.domain.StudentRepository;
+import com.jopagima.school.students.domain.entities.Student;
+import com.jopagima.school.students.domain.repositories.StudentRepository;
 
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
@@ -19,11 +19,11 @@ import com.jopagima.school.students.domain.StudentAlreadyExistsException;
  * annotations) to keep the domain (Student) free of any AWS-specific dependency.
  */
 
-public class DynamoDBStudentRepository implements StudentRepository {
+public class DynamoDbStudentRepository implements StudentRepository {
     private final DynamoDbClient dynamoDbClient;
     private final String tableName;
 
-    public DynamoDBStudentRepository(DynamoDbClient dynamoDbClient, String tableName) {
+    public DynamoDbStudentRepository(DynamoDbClient dynamoDbClient, String tableName) {
         this.dynamoDbClient = dynamoDbClient;
         this.tableName = tableName;
     }

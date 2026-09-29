@@ -1,6 +1,8 @@
-package com.jopagima.school.students.domain;
+package com.jopagima.school.students.domain.entities;
 
 import java.util.regex.Pattern;
+
+import com.jopagima.school.students.domain.InvalidStudentException;
 
 public class Student {
 

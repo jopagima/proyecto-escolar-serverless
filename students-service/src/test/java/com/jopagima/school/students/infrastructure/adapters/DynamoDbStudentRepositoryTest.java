@@ -1,7 +1,7 @@
-package com.jopagima.school.students.infrastructure;
+package com.jopagima.school.students.infrastructure.adapters;
 
 
-import com.jopagima.school.students.domain.Student;
+import com.jopagima.school.students.domain.entities.Student;
 import com.jopagima.school.students.domain.StudentAlreadyExistsException;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -27,11 +27,11 @@ public class DynamoDbStudentRepositoryTest {
 
    @Mock
    private DynamoDbClient  dynamoDbClient;
-   private DynamoDBStudentRepository repository;
+   private DynamoDbStudentRepository repository;
 
   @BeforeEach
   void setUp(){
-    repository = new DynamoDBStudentRepository(dynamoDbClient, TABLE_NAME);
+    repository = new DynamoDbStudentRepository(dynamoDbClient, TABLE_NAME);
   }  
 
    @Test

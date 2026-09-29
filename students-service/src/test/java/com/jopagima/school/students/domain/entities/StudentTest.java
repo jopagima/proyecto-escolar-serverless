@@ -1,9 +1,11 @@
-package com.jopagima.school.students.domain;
+package com.jopagima.school.students.domain.entities;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
+
+import com.jopagima.school.students.domain.InvalidStudentException;
 
 /**
  * The Student entity must be self-validating: no invalid Student instance should

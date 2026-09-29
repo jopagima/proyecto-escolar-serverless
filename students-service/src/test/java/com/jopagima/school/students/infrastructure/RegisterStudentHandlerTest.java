@@ -16,9 +16,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2CustomAuthorizerEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
-import com.jopagima.school.students.domain.Student;
+import com.jopagima.school.students.domain.entities.Student;
 import com.jopagima.school.students.domain.StudentAlreadyExistsException;
-import com.jopagima.school.students.domain.StudentRepository;
+import com.jopagima.school.students.domain.repositories.StudentRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class RegisterStudentHandlerTest {

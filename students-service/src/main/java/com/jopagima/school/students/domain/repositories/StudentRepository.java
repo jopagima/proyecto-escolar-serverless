@@ -1,4 +1,7 @@
-package com.jopagima.school.students.domain;
+package com.jopagima.school.students.domain.repositories;
+
+import com.jopagima.school.students.domain.StudentAlreadyExistsException;
+import com.jopagima.school.students.domain.entities.Student;
 
 /**
  * Port: the domain depends on this interface, never on a concrete AWS SDK type.
