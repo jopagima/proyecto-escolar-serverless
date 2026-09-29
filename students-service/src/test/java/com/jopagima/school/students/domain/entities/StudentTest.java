@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
-import com.jopagima.school.students.domain.InvalidStudentException;
+import com.jopagima.school.commons.domain.ValidationError;
 
 /**
  * The Student entity must be self-validating: no invalid Student instance should
@@ -16,25 +16,25 @@ public class StudentTest {
 
 @Test
     void shouldRejectBlankFirstName() {
-        assertThrows(InvalidStudentException.class,
+        assertThrows(ValidationError.class,
                 () -> Student.create("s-001", " ", "Garcia", "ana.garcia@example.com"));
     }
 
     @Test
     void shouldRejectBlankLastName() {
-        assertThrows(InvalidStudentException.class,
+        assertThrows(ValidationError.class,
                 () -> Student.create("s-001", "Ana", "", "ana.garcia@example.com"));
     }
 
     @Test
     void shouldRejectInvalidEmailFormat() {
-        assertThrows(InvalidStudentException.class,
+        assertThrows(ValidationError.class,
                 () -> Student.create("s-001", "Ana", "Garcia", "not-an-email"));
     }
 
     @Test
     void shouldRejectBlankId() {
-        assertThrows(InvalidStudentException.class,
+        assertThrows(ValidationError.class,
                 () -> Student.create("", "Ana", "Garcia", "ana.garcia@example.com"));
     }    
 

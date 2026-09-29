@@ -14,10 +14,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2CustomAuthorizerEvent;
+import com.jopagima.school.commons.domain.DomainError;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.jopagima.school.students.domain.entities.Student;
-import com.jopagima.school.students.domain.StudentAlreadyExistsException;
 import com.jopagima.school.students.domain.repositories.StudentRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -59,7 +59,7 @@ public class RegisterStudentHandlerTest {
     void shouldReturn409WhenStudentAlreadyExists() {
         APIGatewayV2HTTPEvent event = eventWithBody(
                 "{\"id\":\"s-001\",\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
-        doThrow(new StudentAlreadyExistsException("s-001"))
+        doThrow(DomainError.createAlreadyExists("Student already exists: s-001"))
                 .when(studentRepository).save(any(Student.class));
 
         APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);

@@ -1,6 +1,5 @@
 package com.jopagima.school.students.domain.repositories;
 
-import com.jopagima.school.students.domain.StudentAlreadyExistsException;
 import com.jopagima.school.students.domain.entities.Student;
 
 /**
@@ -8,5 +7,5 @@ import com.jopagima.school.students.domain.entities.Student;
  * Implemented by an infrastructure adapter (see DynamoDbStudentRepository).
  */
 public interface StudentRepository {
-     void save(Student student) throws StudentAlreadyExistsException;
+     void save(Student student);
 }

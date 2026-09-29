@@ -10,7 +10,7 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
-import com.jopagima.school.students.domain.StudentAlreadyExistsException;
+import com.jopagima.school.commons.domain.DomainError;
 
 
 /**
@@ -50,11 +50,11 @@ public class DynamoDbStudentRepository implements StudentRepository {
 
         // TODO 7: call dynamoDbClient.putItem(request), catching
         //   ConditionalCheckFailedException and rethrowing as
-        //   StudentAlreadyExistsException(student.getId()).
+        //   DomainError.createAlreadyExists(...).
         try{
             dynamoDbClient.putItem(request);
         } catch (ConditionalCheckFailedException e) {
-            throw new StudentAlreadyExistsException(student.getId());
+            throw DomainError.createAlreadyExists("Student already exists: " + student.getId());
         } 
         
     }

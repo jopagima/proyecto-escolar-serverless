@@ -2,7 +2,7 @@ package com.jopagima.school.students.domain.entities;
 
 import java.util.regex.Pattern;
 
-import com.jopagima.school.students.domain.InvalidStudentException;
+import com.jopagima.school.commons.domain.ValidationError;
 
 public class Student {
 
@@ -42,19 +42,19 @@ public class Student {
 
         private static void validate(String id, String firstName, String lastName, String email) {
             if (id == null || id.isBlank()) {
-                throw new InvalidStudentException("id cannot be blank");
+                throw ValidationError.create("id cannot be blank");
             }
             if (firstName == null || firstName.isBlank()) {
-                throw new InvalidStudentException("firstName cannot be blank");
+                throw ValidationError.create("firstName cannot be blank");
             }
             if (lastName == null || lastName.isBlank()) {
-                throw new InvalidStudentException("lastName cannot be blank");
+                throw ValidationError.create("lastName cannot be blank");
             }
             if (email == null || email.isBlank()) {
-                throw new InvalidStudentException("email cannot be blank");
+                throw ValidationError.create("email cannot be blank");
             }
             if (!EMAIL_PATTERN.matcher(email).matches()) {
-                throw new InvalidStudentException("email must be valid");
+                throw ValidationError.create("email must be valid");
             }
         }
 }
