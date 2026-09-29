@@ -8,7 +8,8 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 2 (Cursos)
-Día: 5 (cerrado) — pendiente Día 6 (retrofit de students-service, ver "Pendiente")
+Día: 6 (código del retrofit de students-service comiteado) — pendiente redespliegue y
+verificación con `curl -i` (ver "Pendiente")
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -100,6 +101,45 @@ Día: 5 (cerrado) — pendiente Día 6 (retrofit de students-service, ver "Pendi
   mockea la respuesta de DynamoDB a mano. Corregido en un commit aparte
   (`fix(courses): persist id attribute in Course item`), con aserción nueva en
   `savesCourseWithCompositeKeyAndConditionExpression`. 21 tests en verde.
+- Fase 2, Día 6 — **Retrofit hexagonal de `students-service`** aplicado con la Skill
+  `hexagonal-retrofit` por Claude Code, un commit por paso con aprobación explícita de
+  José antes de cada uno (paso 8 de la Skill). 8 commits (`f4c4873`..`2ba81c1`),
+  `mvn clean install` en verde tras cada uno; `students-service` pasa de 10 a 12 tests
+  en verde. Sin tocar `infra/` ni `cdk deploy` (los hace José a mano).
+  `migration_report`:
+  - `domain/entities/Student.java` (movido desde `domain/`): `Id` generado en `create()`
+    vía `Id.generateUniqueIdentifier()`; email como VO; errores → `ValidationError`.
+  - `domain/valueobjects/Email.java` (nuevo): validación de email extraída de `Student`
+    (mismos mensajes, misma regex).
+  - `domain/repositories/StudentRepository.java` (movido): sin `throws` de excepción
+    propia.
+  - `domain/repositories/InMemoryStudentRepository.java` (nuevo): replica
+    `attribute_not_exists(PK)`; `findById` solo para tests, fuera del puerto.
+  - `domain/InvalidStudentException.java`, `StudentAlreadyExistsException.java`:
+    eliminados → `ValidationError` / `DomainError.createAlreadyExists` (mismo texto).
+  - `application/RegisterStudentUseCase.java` (nuevo): `execute(firstName, lastName,
+    email)` → id `String`.
+  - `infrastructure/adapters/DynamoDbStudentRepository.java` (movido y renombrado desde
+    `DynamoDBStudentRepository`): PK/SK y atributos sin cambios.
+  - `infrastructure/factory/StudentsServiceFactory.java` (nuevo): wiring §5.
+  - `infrastructure/RegisterStudentHandler.java`: depende del UseCase; mapeo por
+    `ErrorType`. **Se queda en `infrastructure/`, no en `infrastructure/lambda/`**: su
+    FQCN está hardcodeado en `StudentsApiConstruct` (infra).
+  - `infrastructure/RegisterStudentRequest.java`: sin `id`
+    (`@JsonIgnoreProperties({"id"})`) y sin `toDomain()`.
+  - Tests: movidos con sus clases, renombrados sin `should`; `shouldRejectBlankId`
+    eliminado (el id ya no es entrada); nuevos `RegisterStudentUseCaseTest` (2) e
+    `ignoresClientSuppliedIdAndGeneratesItsOwn`.
+
+  **Cambios de contrato deliberados** (decisión abierta del Día 5 resuelta → opción b):
+  - `ValidationError` → **422** (antes 400). Duplicado sigue en 409; JSON mal formado o
+    body vacío siguen en 400.
+  - El servidor genera el id: el cliente ya no lo envía (si lo envía, se ignora) y el
+    201 devuelve `{"id":"<uuid>"}` (antes body vacío), sin cabecera `Content-Type`.
+
+  **Pendiente para el primer `findById` de students**: `Student.reconstitute` +
+  `Email.reconstitute`, atributo `id` en el item, y qué hacer con los items de Fase 1
+  con ids no UUID (`"s-001"`) que `Id.generateFromPlainTextIdentifier` rechazaría.
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
@@ -292,7 +332,8 @@ para datos inválidos y `RegisterStudentHandlerTest` lo asserta. La guía (§6/�
 **422** a `ValidationError`. La spec dice a la vez "preservar 201/400/409" y "no
 cambiar aserciones". Hay que elegir: (a) mantener 400 en `students-service` y anotar la
 excepción a la regla de 422, o (b) cambiar a 422 y modificar la aserción del test, lo
-que es un cambio visible para cualquier cliente de la API. Sin decidir.
+que es un cambio visible para cualquier cliente de la API. **Resuelto (Día 6): opción
+(b)**, 422 — ver el `migration_report` del Día 6 en "Hecho hasta ahora".
 
 **Fase 2, Día 7 — S3 presigned URL (foto de alumno) + Cognito (grupos de roles)**:
 pendiente desde la Fase 1. El curso de certificación AWS Developer (`Developing on
