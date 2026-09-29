@@ -11,8 +11,7 @@ import com.jopagima.school.commons.domain.DomainError;
 import com.jopagima.school.commons.domain.ErrorType;
 import com.jopagima.school.commons.domain.ValidationError;
 import com.jopagima.school.students.application.RegisterStudentUseCase;
-import com.jopagima.school.students.infrastructure.adapters.DynamoDbStudentRepository;
-import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import com.jopagima.school.students.infrastructure.factory.StudentsServiceFactory;
 
 /**
  * Entry-point adapter: translates the HTTP proxy event into a call to
@@ -25,8 +24,7 @@ public class RegisterStudentHandler implements RequestHandler<APIGatewayV2HTTPEv
 
 
     public RegisterStudentHandler() {
-        this(new RegisterStudentUseCase(
-                new DynamoDbStudentRepository(DynamoDbClient.create(), System.getenv("TABLE_NAME"))));
+        this(StudentsServiceFactory.createRegisterStudentUseCase());
     }
     public RegisterStudentHandler(RegisterStudentUseCase registerStudentUseCase) {
         this.registerStudentUseCase = registerStudentUseCase;
