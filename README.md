@@ -58,10 +58,17 @@ school-serverless-platform/
 └── subjects-service/    # Asignaturas bounded context (created at Phase 5)
 ```
 
-Each service module (from Phase 2 onward, applied retroactively to `students-service`
-at the close of Phase 2) follows a hexagonal layout: `domain` (entities, ports — zero
-AWS SDK dependencies), `infrastructure` (adapters implementing those ports, including
-the Lambda handler as the entry-point adapter and boundary-specific DTOs).
+Each service module follows a hexagonal layout: `domain/entities` (autovalidated
+entities), `domain/valueobjects` (e.g. `CourseCapacity`), `domain/repositories` (ports
++ InMemory implementations, one file each in the same package),
+`domain/services` (pure Domain Services), `application` (Use Cases, single public
+`execute(...)` entry point, primitive parameters — see
+`guidelinesHexagonal-serverless.md` §4.2), `infrastructure/adapters` (DynamoDB
+repositories) and `infrastructure` (Lambda handlers). `courses-service` is fully
+migrated to this layout (Fase 2 Día 5); `students-service` retrofit is next (Día 6) —
+see [`guidelinesHexagonal-serverless.md`](./guidelinesHexagonal-serverless.md) for the
+full convention and [`openspec/specs/hexagonal-retrofit.md`](./openspec/specs/hexagonal-retrofit.md)
+for the retrofit contract.
 
 ## Design conventions
 
@@ -75,6 +82,13 @@ the Lambda handler as the entry-point adapter and boundary-specific DTOs).
   attribute duplication isn't needed.
 - **`PAY_PER_REQUEST` billing** everywhere — no fixed/hourly-cost resource is introduced
   without an explicit justification and cost estimate.
+- **Identity as a Value Object**: `Id` (backed by a real UUID, in `commons`) with two
+  factory methods — `create(...)`/`generateUniqueIdentifier()` for new entities (server
+  generates the id, not the client) and `reconstitute(...)` for rebuilding an entity
+  already read from persistence, without revalidating.
+- **Two error types, not one**: `ValidationError` (format/invariant violations, always
+  HTTP 422) and `DomainError` (`notFound`/`alreadyExists`/`other`, mapped per type) —
+  see `guidelinesHexagonal-serverless.md` §6. Replaces per-entity exception classes.
 - **TDD**, reinforced for any code touching the AWS SDK: business logic is unit-tested
   against mocked SDK clients (Mockito); every adapter has a dedicated contract test.
 - **Domain purity:** entities and ports never import AWS SDK, Lambda, or JSON
@@ -106,7 +120,7 @@ explicitly, with an estimate, before being introduced.
 |---|---|---|
 | 0 | Setup & diagnosis | ✅ Closed |
 | 1 | Students (CRUD, DynamoDB, Lambda, API Gateway, CI/CD pipeline) | ✅ Closed — deployed and verified end-to-end in production |
-| 2 | Courses (hexagonal backend activated retroactively at close) | 🔄 In progress (Day 1 of ~4 closed — table modeled) |
+| 2 | Courses — hexagonal architecture | 🔄 In progress (Día 5 of 8 closed — `courses-service` fully migrated to hexagonal) |
 | 3 | Exams / Questions | ⏳ Pending |
 | 4 | Answers | ⏳ Pending |
 | 5 | Subjects (parent/child hierarchy, cursor pagination) | ⏳ Pending |
@@ -150,8 +164,14 @@ write — confirmed against the real deployed endpoint (`201` on first registrat
 Student already exists` on duplicate). The pipeline (Source → Synth → SelfMutate →
 Assets → Deploy) runs green end-to-end.
 
-**Phase 2 (Courses) in progress.** Day 1 closed: `CoursesTableConstruct` models the
-Course-Student N:M relationship via the adjacency list pattern plus a
-`StudentCoursesIndex` GSI for the inverse query, verified with CDK assertions tests.
-Next: Day 2, `Course`/`CourseEnrollment` domain entities and DynamoDB adapter with
-reinforced TDD.
+**Phase 2 (Courses) in progress — Día 5 of 8 closed.** `courses-service` domain
+(`Course`, `CourseEnrollment`, `CourseCapacity` value object), both repositories
+(DynamoDB adapters + InMemory), the `EnrollmentEligibilityService` domain service and
+the first real Use Case (`EnrollStudentInCourseUseCase`) are complete — 21 tests green.
+The module has been fully migrated to the hexagonal layout defined in
+`guidelinesHexagonal-serverless.md`, applied via the `hexagonal-retrofit` Claude Code
+Skill (`.claude/skills/hexagonal-retrofit/`). No Lambda handler for courses yet — no
+HTTP endpoint deployed for this bounded context. Next: Día 6, the same retrofit applied
+to `students-service` (which has a Lambda already deployed in production, so it's done
+with a granular, one-commit-per-verified-step discipline and a full redeploy +
+`curl` re-verification at the end).
