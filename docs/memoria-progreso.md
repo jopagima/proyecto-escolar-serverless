@@ -8,8 +8,7 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 2 (Cursos)
-Día: 6 (código del retrofit de students-service comiteado) — pendiente redespliegue y
-verificación con `curl -i` (ver "Pendiente")
+Día: 6 (cerrado) — pendiente Día 7 (S3 presigned + Cognito, ver "Pendiente")
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -101,45 +100,58 @@ verificación con `curl -i` (ver "Pendiente")
   mockea la respuesta de DynamoDB a mano. Corregido en un commit aparte
   (`fix(courses): persist id attribute in Course item`), con aserción nueva en
   `savesCourseWithCompositeKeyAndConditionExpression`. 21 tests en verde.
-- Fase 2, Día 6 — **Retrofit hexagonal de `students-service`** aplicado con la Skill
-  `hexagonal-retrofit` por Claude Code, un commit por paso con aprobación explícita de
-  José antes de cada uno (paso 8 de la Skill). 8 commits (`f4c4873`..`2ba81c1`),
-  `mvn clean install` en verde tras cada uno; `students-service` pasa de 10 a 12 tests
-  en verde. Sin tocar `infra/` ni `cdk deploy` (los hace José a mano).
-  `migration_report`:
-  - `domain/entities/Student.java` (movido desde `domain/`): `Id` generado en `create()`
-    vía `Id.generateUniqueIdentifier()`; email como VO; errores → `ValidationError`.
-  - `domain/valueobjects/Email.java` (nuevo): validación de email extraída de `Student`
-    (mismos mensajes, misma regex).
-  - `domain/repositories/StudentRepository.java` (movido): sin `throws` de excepción
-    propia.
-  - `domain/repositories/InMemoryStudentRepository.java` (nuevo): replica
-    `attribute_not_exists(PK)`; `findById` solo para tests, fuera del puerto.
-  - `domain/InvalidStudentException.java`, `StudentAlreadyExistsException.java`:
-    eliminados → `ValidationError` / `DomainError.createAlreadyExists` (mismo texto).
-  - `application/RegisterStudentUseCase.java` (nuevo): `execute(firstName, lastName,
-    email)` → id `String`.
-  - `infrastructure/adapters/DynamoDbStudentRepository.java` (movido y renombrado desde
-    `DynamoDBStudentRepository`): PK/SK y atributos sin cambios.
-  - `infrastructure/factory/StudentsServiceFactory.java` (nuevo): wiring §5.
-  - `infrastructure/RegisterStudentHandler.java`: depende del UseCase; mapeo por
-    `ErrorType`. **Se queda en `infrastructure/`, no en `infrastructure/lambda/`**: su
-    FQCN está hardcodeado en `StudentsApiConstruct` (infra).
-  - `infrastructure/RegisterStudentRequest.java`: sin `id`
-    (`@JsonIgnoreProperties({"id"})`) y sin `toDomain()`.
-  - Tests: movidos con sus clases, renombrados sin `should`; `shouldRejectBlankId`
-    eliminado (el id ya no es entrada); nuevos `RegisterStudentUseCaseTest` (2) e
-    `ignoresClientSuppliedIdAndGeneratesItsOwn`.
-
-  **Cambios de contrato deliberados** (decisión abierta del Día 5 resuelta → opción b):
-  - `ValidationError` → **422** (antes 400). Duplicado sigue en 409; JSON mal formado o
-    body vacío siguen en 400.
-  - El servidor genera el id: el cliente ya no lo envía (si lo envía, se ignora) y el
-    201 devuelve `{"id":"<uuid>"}` (antes body vacío), sin cabecera `Content-Type`.
-
-  **Pendiente para el primer `findById` de students**: `Student.reconstitute` +
-  `Email.reconstitute`, atributo `id` en el item, y qué hacer con los items de Fase 1
-  con ids no UUID (`"s-001"`) que `Id.generateFromPlainTextIdentifier` rechazaría.
+- Fase 2, Día 6 — **Retrofit hexagonal de `students-service`**, aplicado con la Skill
+  `hexagonal-retrofit` por Claude Code. A diferencia del Día 5, con **un commit por
+  paso y aprobación explícita de José antes de cada uno** (paso 8 de la Skill, añadido
+  hoy mismo tras pedirlo José — ver decisión más abajo). 8 commits (`f4c4873`..
+  `2ba81c1`), `mvn clean install` en verde tras cada uno; `students-service` pasa de
+  10 a 12 tests. `infra/` no se tocó, sin `cdk deploy` del agente (verificado con
+  `git diff f4c4873^ 004c6c2e -- infra/`, vacío).
+  `migration_report`: `Student` → `domain/entities/`, `Id` generado en `create()`;
+  `Email` extraído como Value Object; `StudentRepository` → `domain/repositories/` +
+  `InMemoryStudentRepository`; `InvalidStudentException`/`StudentAlreadyExistsException`
+  → `ValidationError`/`DomainError.createAlreadyExists`; `RegisterStudentUseCase`
+  extraído del handler; `DynamoDbStudentRepository` (renombrado desde
+  `DynamoDBStudentRepository`) → `infrastructure/adapters/`; `StudentsServiceFactory`
+  nuevo; `RegisterStudentHandler` se queda en `infrastructure/` (no
+  `infrastructure/lambda/`, su FQCN está hardcodeado en `StudentsApiConstruct`); tests
+  renombrados sin `should`.
+  **Decisión abierta del Día 5, resuelta → opción (B)**: `ValidationError` pasa de 400
+  a **422** en `students-service`, sin excepción — José cambia de opinión en la propia
+  sesión del Día 6 (había elegido mantener 400 primero) para ser coherente con la guía
+  sin casos especiales. Duplicado sigue en 409; JSON malformado/body vacío siguen en
+  400 (son errores de infraestructura, no `ValidationError`).
+  **Segundo cambio de contrato, no discutido antes de hoy pero necesario**: el servidor
+  genera el `id` (`Id.generateUniqueIdentifier()`); el cliente ya no lo envía
+  (`RegisterStudentRequest` con `@JsonIgnoreProperties({"id"})`, lo ignora si lo
+  manda); el `201` devuelve `{"id":"<uuid>"}` en el body (antes vacío) — sin esto el
+  cliente no tendría forma de saber qué alumno se creó.
+  **Verificado contra producción real** tras `git push` y `Deploy` en verde
+  (CodePipeline, commit `004c6c2e`): `curl -i` con datos inválidos → `422
+  firstName cannot be blank`; `curl -i` con datos válidos → `201
+  {"id":"69a8726d-38f1-4267-a11e-a280a7a67f0d"}`. Mismo rigor de reverificación que
+  cerró la Fase 1.
+  **Incidente durante la verificación**: el primer intento de `curl` (local y en
+  CloudShell) devolvió `403 Forbidden` con cabeceras de CloudFront — la URL usaba el ID
+  de otra API REST del mismo account (`2ltxzx0x97`, `PortFolioApi`, otro proyecto), no
+  el de `StudentsHttpApi` (`n3p81ul131`). No era un fallo de AWS ni del retrofit, solo
+  un ID de API equivocado copiado de una sesión anterior.
+  **Commits sueltos detectados en el `git log` y aclarados**: `fd4c498`/`251ea31`
+  (mismo mensaje, 9s de diferencia) eran dos partes del mismo commit de docs partido
+  por un `git add` incompleto (`docs/memoria-progreso.md`+`mvnj.bat` y `README.md`
+  respectivamente) — sin pérdida de contenido. `da2b335` ("docs: does not needed
+  anymore") borra `mvnj.bat`, comiteado por error y corregido enseguida — no toca
+  `openspec/` ni `.claude/skills/`.
+  **Nota de ubicación de ficheros**: `memoria-progreso.md` vive en `docs/`, no en la
+  raíz (confirmado por José) — `README.md` sí en la raíz.
+  **Nueva preferencia permanente, añadida en medio del Día 6**: aprobación humana
+  explícita antes de cada `git commit` en cualquier trabajo delegado a un agente — ver
+  entrada propia en "Decisiones técnicas".
+  **Pendiente para el primer `findById` de `students-service`**: `Student.reconstitute`
+  + `Email.reconstitute` (mismo patrón que `Course`), atributo `id` en el item de
+  DynamoDB, y qué hacer con los alumnos ya guardados en Fase 1 con IDs no-UUID
+  (`"s-001"`), que `Id.generateFromPlainTextIdentifier` rechazaría con `ValidationError`
+  — dato real ya en la tabla de producción, no solo un caso hipotético.
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
@@ -298,6 +310,11 @@ verificación con `curl -i` (ver "Pendiente")
   se pueden aplicar con `git apply` (el contexto "antes" ya no existe). Se comprueba con
   `git apply --reverse --check`. Si el árbol ya está en el estado final, lo más simple
   es comitear ese estado en vez de reconstruir el historial.
+- Un `403 Forbidden` con cabeceras de CloudFront contra una HTTP API regional (que no
+  debería pasar por CloudFront) es señal de estar llamando a la URL equivocada, no de
+  un fallo de permisos real — José tenía varias APIs en la cuenta (`PortFolioApi` de
+  otro proyecto) y copió el ID incorrecto (Fase 2 Día 6). Verificar el ID de API contra
+  la consola (**API Gateway → APIs**) antes de asumir un problema de IAM/CORS/WAF.
 
 ## Servicios AWS de la hoja de ruta original ya acoplados
 - DynamoDB — Fase 1, Día 1.
@@ -319,21 +336,18 @@ cosa menor de `courses-service` que quedó abierta:
 `refactor(courses): apply hexagonal retrofit` en vez de en un commit aparte (José lo
 confirma tras revisar el código ya comiteado, no fue un paso deliberado de ese commit).
 
-**Fase 2, Día 6 — retrofit de `students-service`** (Lambda en producción, mayor
-riesgo): aplicar la Skill `hexagonal-retrofit` pidiendo a Claude Code que comitee cada
-paso verificado en verde. Incluye: `Student` con `Id` (cambio de contrato de API: el
-servidor genera el ID, el cliente deja de enviarlo en `RegisterStudentRequest`),
-`Email` como Value Object, extraer `RegisterStudentUseCase` del handler,
-`InMemoryStudentRepository`, `StudentsServiceFactory`, excepciones →
-`ValidationError`/`DomainError`, tests sin `should`. Al terminar, redesplegar vía
-pipeline y reverificar con `curl -i` contra el endpoint real.
-**Decisión abierta antes de empezar**: hoy `RegisterStudentHandler` devuelve **400**
-para datos inválidos y `RegisterStudentHandlerTest` lo asserta. La guía (§6/§7) asigna
-**422** a `ValidationError`. La spec dice a la vez "preservar 201/400/409" y "no
-cambiar aserciones". Hay que elegir: (a) mantener 400 en `students-service` y anotar la
-excepción a la regla de 422, o (b) cambiar a 422 y modificar la aserción del test, lo
-que es un cambio visible para cualquier cliente de la API. **Resuelto (Día 6): opción
-(b)**, 422 — ver el `migration_report` del Día 6 en "Hecho hasta ahora".
+**Fase 2, Día 6 — cerrado.** Retrofit de `students-service` aplicado, commiteado paso a
+paso con aprobación explícita, desplegado vía pipeline y verificado con `curl -i` real
+(422 en validación, 201 con `id` generado por el servidor). Ver detalle completo en el
+diario ("Hecho hasta ahora") y las dos decisiones que quedan ahí documentadas
+(422 sin excepción; `id` en el body de respuesta).
+
+**Antes de abrir el Día 7, dos cosas menores que quedaron pendientes:**
+- Javadoc desactualizado en `CourseRepository` ("Enrollment operations are
+  intentionally not part of this port yet") — sigue sin limpiar desde el Día 5.
+- `Student.reconstitute`/`Email.reconstitute` + atributo `id` en el item DynamoDB de
+  `students-service`, y la decisión sobre los alumnos ya guardados con IDs no-UUID de
+  Fase 1 — necesario antes de implementar cualquier `findById` en `students-service`.
 
 **Fase 2, Día 7 — S3 presigned URL (foto de alumno) + Cognito (grupos de roles)**:
 pendiente desde la Fase 1. El curso de certificación AWS Developer (`Developing on

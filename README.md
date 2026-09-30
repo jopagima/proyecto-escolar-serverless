@@ -120,7 +120,7 @@ explicitly, with an estimate, before being introduced.
 |---|---|---|
 | 0 | Setup & diagnosis | ✅ Closed |
 | 1 | Students (CRUD, DynamoDB, Lambda, API Gateway, CI/CD pipeline) | ✅ Closed — deployed and verified end-to-end in production |
-| 2 | Courses — hexagonal architecture | 🔄 In progress (Día 5 of 8 closed — `courses-service` fully migrated to hexagonal) |
+| 2 | Courses — hexagonal architecture | 🔄 In progress (Día 6 of 8 closed — both `courses-service` and `students-service` migrated to hexagonal) |
 | 3 | Exams / Questions | ⏳ Pending |
 | 4 | Answers | ⏳ Pending |
 | 5 | Subjects (parent/child hierarchy, cursor pagination) | ⏳ Pending |
@@ -160,18 +160,22 @@ manual `cdk deploy` is needed for business stacks (`StudentsStack`, etc.).
 
 **Phase 1 (Students) closed and verified in production.** `POST /students` is live on
 API Gateway, backed by a Lambda (Java 17) writing to DynamoDB with an atomic conditional
-write — confirmed against the real deployed endpoint (`201` on first registration, `409
-Student already exists` on duplicate). The pipeline (Source → Synth → SelfMutate →
-Assets → Deploy) runs green end-to-end.
+write. The pipeline (Source → Synth → SelfMutate → Assets → Deploy) runs green
+end-to-end.
 
-**Phase 2 (Courses) in progress — Día 5 of 8 closed.** `courses-service` domain
-(`Course`, `CourseEnrollment`, `CourseCapacity` value object), both repositories
-(DynamoDB adapters + InMemory), the `EnrollmentEligibilityService` domain service and
-the first real Use Case (`EnrollStudentInCourseUseCase`) are complete — 21 tests green.
-The module has been fully migrated to the hexagonal layout defined in
+**Phase 2 (Courses) in progress — Día 6 of 8 closed.** Both `courses-service` and
+`students-service` are fully migrated to the hexagonal layout defined in
 `guidelinesHexagonal-serverless.md`, applied via the `hexagonal-retrofit` Claude Code
-Skill (`.claude/skills/hexagonal-retrofit/`). No Lambda handler for courses yet — no
-HTTP endpoint deployed for this bounded context. Next: Día 6, the same retrofit applied
-to `students-service` (which has a Lambda already deployed in production, so it's done
-with a granular, one-commit-per-verified-step discipline and a full redeploy +
-`curl` re-verification at the end).
+Skill (`.claude/skills/hexagonal-retrofit/`) — `courses-service` in one batched commit
+(no Lambda deployed yet, low risk), `students-service` with one approved commit per
+verified step (Lambda already live). Two deliberate API contract changes shipped with
+the `students-service` retrofit and verified against the live endpoint: `Id` is now a
+real UUID generated server-side (`RegisterStudentRequest` no longer accepts a
+client-supplied `id`; the `201` response body now returns the generated
+`{"id": "<uuid>"}`), and validation failures now return **422** instead of 400, with no
+exception — re-verified with `curl` against production
+(`422 firstName cannot be blank`, `201 {"id":"<uuid>"}`). `courses-service` has no
+Lambda handler yet — no HTTP endpoint deployed for that bounded context; a first
+`findById` for `students-service` still needs `Student.reconstitute`/
+`Email.reconstitute` and a decision on Phase-1-era non-UUID student ids already in the
+table. Next: Día 7, S3 presigned photo upload + Cognito role groups.
