@@ -325,10 +325,7 @@ Día: 6 (cerrado) — pendiente Día 7 (S3 presigned + Cognito, ver "Pendiente")
 
 ## Pendiente / próximo día
 **Fase 2, Día 5 — cerrado** (Skill definida, `courses-service` migrado, bug del
-atributo `id` corregido, mensaje duplicado limpiado). Antes de empezar el Día 6, una
-cosa menor de `courses-service` que quedó abierta:
-- Javadoc desactualizado en `CourseRepository` ("Enrollment operations are
-  intentionally not part of this port yet") — limpiar al inicio del Día 6.
+atributo `id` corregido, mensaje duplicado limpiado).
 
 **Resuelto, sin commit propio**: `EnrollStudentInCourseUseCase` ya llama a
 `EnrollmentEligibilityService.canEnroll(...)` en vez de comparar
@@ -342,12 +339,23 @@ paso con aprobación explícita, desplegado vía pipeline y verificado con `curl
 diario ("Hecho hasta ahora") y las dos decisiones que quedan ahí documentadas
 (422 sin excepción; `id` en el body de respuesta).
 
-**Antes de abrir el Día 7, dos cosas menores que quedaron pendientes:**
-- Javadoc desactualizado en `CourseRepository` ("Enrollment operations are
-  intentionally not part of this port yet") — sigue sin limpiar desde el Día 5.
-- `Student.reconstitute`/`Email.reconstitute` + atributo `id` en el item DynamoDB de
-  `students-service`, y la decisión sobre los alumnos ya guardados con IDs no-UUID de
-  Fase 1 — necesario antes de implementar cualquier `findById` en `students-service`.
+**Cierre de las dos tareas menores, antes de abrir el Día 7:**
+- **Javadoc de `CourseRepository`**: corregido — el texto ya no sugiere que las
+  operaciones de matrícula son un pendiente ("not part of this port yet"), ahora explica
+  que viven permanentemente en un puerto distinto (`CourseEnrollmentRepository`) por
+  tratarse de un agregado independiente. Commit: `docs(courses): fix stale
+  CourseRepository javadoc`.
+- **`Student.reconstitute`/`Email.reconstitute`**: **pospuesto**, mismo criterio que
+  `CoursesServiceFactory` (no se construye infraestructura sin consumidor real — hoy
+  no hay ningún UseCase ni handler que llame a `findById` en `students-service`). Se
+  implementará el día que exista ese consumidor.
+- **Decisión sobre los alumnos de Fase 1 con IDs no-UUID** (`"s-001"` y similares):
+  **resuelta**. Son datos de prueba generados con `curl` durante la verificación de la
+  Fase 1, sin valor de negocio que preservar. Cuando se implemente `findById` en
+  `students-service`, esos ítems antiguos simplemente no serán recuperables por ese
+  método (`Id.generateFromPlainTextIdentifier` los rechazará con `ValidationError`) —
+  se documenta como limitación conocida y aceptada, sin migración de datos. Si llegan a
+  estorbar, se borran de la tabla a mano.
 
 **Fase 2, Día 7 — S3 presigned URL (foto de alumno) + Cognito (grupos de roles)**:
 pendiente desde la Fase 1. El curso de certificación AWS Developer (`Developing on
