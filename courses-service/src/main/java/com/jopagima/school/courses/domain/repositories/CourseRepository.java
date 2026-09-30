@@ -7,8 +7,9 @@ import com.jopagima.school.courses.domain.entities.Course;
 
 /**
  * Port: the domain depends on this interface, never on a concrete AWS SDK type.
- * Enrollment operations are intentionally not part of this port yet — they belong to
- * a future day, once CourseEnrollment as a concept is modeled.
+ * Enrollment operations live in a separate port, CourseEnrollmentRepository, because
+ * CourseEnrollment is an independent domain aggregate from Course (see
+ * CourseEnrollment's own Javadoc) — not because they're missing from here.
  */
 public interface CourseRepository {
     void save(Course course);
