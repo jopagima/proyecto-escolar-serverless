@@ -303,7 +303,7 @@ public final class Id {
 
     public static Id create(String value) {
         if (value == null || value.trim().isEmpty()) {
-            throw DomainError.createValidation("Id cannot be empty");
+            throw ValidationError.create("Id cannot be empty");
         }
         return new Id(value);
     }
@@ -340,7 +340,7 @@ public final class Email {
 
     public static Email create(String value) {
         if (!value.contains("@")) {
-            throw DomainError.createValidation("Invalid email format");
+            throw ValidationError.create("Invalid email format");
         }
         return new Email(value);
     }
@@ -412,16 +412,15 @@ public final class EnrollmentEligibilityService {
 | Vive en `domain/services/` | Vive en `application/` |
 | Llamado por entidades o casos de uso | Punto de entrada desde infrastructure |
 
-### 4.5 Repositories (Domain) — interfaz + InMemory co-localizados
+### 4.5 Repositories (Domain) — interfaz + InMemory en el mismo paquete
 
 **`Maybe<T>`** — ✅ **resuelto: se adopta el principio (nunca `null` en el tipo de
 retorno), materializado como `java.util.Optional<T>`**, el equivalente idiomático en Java
 al `Maybe<T>` propio del original (`Some`/`None` ≈ `Optional.of`/`Optional.empty`,
 `isSome()`/`isNone()` ≈ `isPresent()`/`isEmpty()`, `getOrThrow()` ≈ `orElseThrow()`,
 `fold()`/`map()` ≈ `map()`/`orElseGet()`). No se implementa un tipo `Maybe` propio — sería
-reinventar lo que el JDK ya ofrece con el mismo comportamiento estructural. **El proyecto
-hoy no tiene ningún `findById` implementado todavía**, así que esta decisión se aplica
-desde el primer `findById` que se escriba, sin necesidad de migración retroactiva.
+reinventar lo que el JDK ya ofrece con el mismo comportamiento estructural. Aplicado en
+`CourseRepository.findById` (Fase 2 Día 4); `StudentRepository` lo adoptará en su retrofit.
 
 ```java
 // src/students-service/domain/repositories/StudentRepository.java
@@ -436,7 +435,9 @@ public interface StudentRepository {
 ```
 
 ```java
-// InMemory (mismo fichero) — sustituye al mock de Mockito en tests de UseCase
+// InMemoryStudentRepository.java — mismo paquete que el puerto, fichero propio
+// (Java no admite dos clases públicas en un fichero; los tests de application
+// necesitan la clase pública). Sustituye al mock de Mockito en tests de UseCase
 public class InMemoryStudentRepository implements StudentRepository {
 
     private final Map<String, Student> students = new HashMap<>();
@@ -539,22 +540,36 @@ en vez de adaptadores reales — no se testea a través de la `Factory` de produ
 
 ---
 
-## 6. Error Handling — `DomainError` con factory methods
+## 6. Error Handling — `ValidationError` y `DomainError`
 
-✅ **Resuelto: se adopta `DomainError` según el original.** Una **única clase
-`DomainError`** con métodos factory (`createNotFound`, `createValidation`, `create`),
-sustituyendo la jerarquía de excepciones específicas por caso. **El código actual tiene
-excepciones separadas por entidad y caso** (`InvalidStudentException`,
-`StudentAlreadyExistsException`, `InvalidCourseException`, `CourseAlreadyExistsException`)
-— eso es exactamente lo que el original desaconseja, y se migra en la retroactiva de la
-Skill (cierre de Fase 2, §14): `InvalidStudentException` → `DomainError.createValidation`,
-`StudentAlreadyExistsException` → un tipo `alreadyExists` nuevo en `ErrorType` (el
-original solo define `notFound`/`validation`/`other`; este proyecto necesita un cuarto
-tipo para el conflicto de duplicados que ya usamos con `ConditionExpression` — se añade
-`alreadyExists` a `ErrorType`, manteniendo el espíritu de la guía con la extensión mínima
-que el dominio del proyecto requiere).
+✅ **Resuelto (decisión de José, Fase 2 Día 4): dos tipos de error, no uno.** El original
+propone una única clase `DomainError` con factory methods; este proyecto la reparte según
+la naturaleza del fallo:
+
+- **`ValidationError`**: formato o invariante violado (nombre vacío, `maxCapacity <= 0`,
+  UUID mal formado). Siempre HTTP 422. Un solo factory: `ValidationError.create(msg)`.
+- **`DomainError`**: el resto de fallos de negocio, con un `ErrorType` (`notFound`,
+  `alreadyExists`, `other`) que decide el HTTP status. **No tiene `validation`**: ese caso
+  pertenece a `ValidationError`.
+
+`alreadyExists` es una extensión del proyecto sobre el original (que solo define
+`notFound`/`validation`/`other`), necesaria para el conflicto de duplicados que ya
+verificamos en producción con `ConditionExpression` (HTTP 409).
+
+Ambas viven en `commons` (`com.jopagima.school.commons.domain`).
 
 ```java
+public class ValidationError extends RuntimeException {
+
+    private ValidationError(String message) {
+        super(message);
+    }
+
+    public static ValidationError create(String message) {
+        return new ValidationError(message);
+    }
+}
+
 public class DomainError extends RuntimeException {
 
     private final ErrorType type;
@@ -566,10 +581,6 @@ public class DomainError extends RuntimeException {
 
     public static DomainError createNotFound(String message) {
         return new DomainError(ErrorType.notFound, message);
-    }
-
-    public static DomainError createValidation(String message) {
-        return new DomainError(ErrorType.validation, message);
     }
 
     public static DomainError createAlreadyExists(String message) {
@@ -586,23 +597,27 @@ public class DomainError extends RuntimeException {
 }
 
 public enum ErrorType {
-    notFound, validation, alreadyExists, other
+    notFound, alreadyExists, other
 }
 ```
 
-| Factory method | Tipo | Uso | HTTP status (§7) |
+| Error | Factory | Uso | HTTP status (§7) |
 |---|---|---|---|
-| `createNotFound()` | `notFound` | La entidad no existe | 404 |
-| `createValidation()` | `validation` | Invariante violado, estado inválido | 422 |
-| `createAlreadyExists()` | `alreadyExists` | Conflicto de duplicado (extensión del proyecto sobre `ConditionExpression`) | 409 |
-| `create()` | `other` | Otros errores de dominio | 400 |
+| `ValidationError` | `create()` | Formato o invariante violado | 422 |
+| `DomainError` | `createNotFound()` | La entidad no existe | 404 |
+| `DomainError` | `createAlreadyExists()` | Conflicto de duplicado (`ConditionExpression`) | 409 |
+| `DomainError` | `create()` | Otra regla de negocio (ej. curso lleno) | 400 |
 
-**Migración retroactiva (cierre de Fase 2, §14)**: `InvalidStudentException`/
-`InvalidCourseException` → `DomainError.createValidation(...)`;
-`StudentAlreadyExistsException`/`CourseAlreadyExistsException` →
-`DomainError.createAlreadyExists(...)`. Afecta a código ya desplegado y verificado en
-producción (Fase 1) — se aplica microservicio a microservicio, no de golpe, siguiendo la
-regla ya fijada del proyecto.
+**Migración retroactiva (§14)**: `InvalidStudentException`/`InvalidCourseException`/
+`InvalidCourseEnrollmentException` → `ValidationError.create(...)`;
+`StudentAlreadyExistsException`/`CourseAlreadyExistsException`/
+`EnrollmentAlreadyExistsException` → `DomainError.createAlreadyExists(...)`; "no
+encontrado" → `DomainError.createNotFound(...)`. `courses-service` ya migrado (Fase 2
+Día 5); `students-service` (Fase 2 Día 6, Lambda en producción) sigue la regla sin
+excepciones: `ValidationError` → HTTP 422 también aquí, aunque el endpoint ya esté
+desplegado — es un cambio de contrato deliberado (decisión de José, Fase 2 Día 6, tras
+valorar y descartar mantener 400 como caso especial), verificado con `curl` real al
+redesplegar.
 
 **Mensajes de error**: incluir descripción humana + contexto relevante (IDs, valores).
 Nunca incluir stack traces, detalles de implementación interna, nombres de tabla
@@ -661,9 +676,12 @@ public class RegisterStudentHandler implements RequestHandler<APIGatewayV2HTTPEv
     }
 
     private APIGatewayV2HTTPResponse handleError(Exception error) {
+        if (error instanceof ValidationError validationError) {
+            return errorResponse(422, validationError.getMessage());
+        }
         if (error instanceof DomainError domainError) {
             Map<String, Integer> statusMap = Map.of(
-                    "notFound", 404, "validation", 422, "alreadyExists", 409, "other", 400);
+                    "notFound", 404, "alreadyExists", 409, "other", 400);
             int status = statusMap.getOrDefault(domainError.getType().name(), 400);
             return errorResponse(status, domainError.getMessage());
         }
@@ -683,7 +701,7 @@ if (maxCapacity <= 0) {
 }
 
 // BIEN — deja que Course.create()/CourseCapacity.create() lo valide;
-// el UseCase propagará el DomainError.createValidation() correspondiente
+// el UseCase propagará el ValidationError correspondiente
 ```
 
 **Formato de respuesta:**
@@ -739,6 +757,30 @@ void appliesDiscountForOrdersAboveThreshold() { ... }
 prefijo `should`. Los tests **ya escritos** (Fase 1 y Fase 2 Día 1) se renombran en la
 migración retroactiva de la Skill, microservicio a microservicio (§14) — no se tocan
 antes, para no reabrir código ya verificado en producción sin ese trabajo planificado.
+
+### 8.3b Fixtures de `Id` en tests — siempre UUID real, nunca un placeholder inventado
+
+✅ **Añadido tras un fallo real (Fase 2 Día 7)**: un `RequestStudentPhotoUploadUseCase`
+construía la `objectKey` a partir del `studentId` recibido **sin pasarlo por
+`Id.generateFromPlainTextIdentifier(...)`** — cualquier string, válido o no, generaba
+una presigned URL. El test de partida usaba `"s-abc-123"` como valor de ejemplo, un
+placeholder que nunca sería un UUID real, y no detectó el problema porque el propio
+`UseCase` tampoco validaba.
+
+**Regla**: cualquier test (UseCase, handler, repositorio) que necesite representar un
+identificador de entidad (`studentId`, `courseId`, etc.) usa
+`Id.generateUniqueIdentifier().toString()`, nunca un string inventado tipo `"s-001"`,
+`"c-999"` o `"abc-123"` — salvo que el propio test exista **para** verificar el
+rechazo de un formato inválido (`doesNotAllowMalformedStudentId`,
+`returns422WhenStudentIdIsMalformed`), en cuyo caso el string no-UUID es
+intencional y debe nombrarse como tal en el test.
+
+**Consecuencia de diseño, no solo de testing**: todo UseCase que reciba un
+identificador como `String` en su frontera (§4.2) debe convertirlo a `Id` vía
+`Id.generateFromPlainTextIdentifier(...)` **antes** de usarlo para cualquier cosa —
+construir una clave de S3, consultar un repositorio, etc. — para que un identificador
+mal formado falle con `ValidationError` (422) de forma temprana y consistente, en vez
+de propagarse silenciosamente. Ver §13.
 
 ### 8.4 Estructura AAA (Arrange-Act-Assert)
 
@@ -1186,6 +1228,9 @@ opciones consideradas, pregunta específica, recomendación (si la hay).
 - ❌ Un UseCase nunca invoca a otro UseCase.
 - ❌ Nunca poner lógica de negocio en un adaptador ni en un Lambda handler.
 - ❌ Nunca crear clases "God" (`StudentManager`, `CourseHelper`).
+- ❌ Nunca usar un identificador de entidad recibido como `String` sin pasarlo por
+  `Id.generateFromPlainTextIdentifier(...)` antes de construir claves, consultar
+  repositorios o persistir con él (§8.3b — fallo real de Fase 2 Día 7).
 - ✅ Siempre crear el puerto (interfaz) antes que su adaptador.
 - ✅ Domain siempre libre de dependencias externas.
 - ✅ Validar la regla de dependencias en cada import nuevo.
@@ -1200,16 +1245,21 @@ Al activar esta Skill formalmente (cierre de Fase 2), con los 4 conflictos ya re
 a favor de esta guía (§4.3, §4.5, §6, §8.3, §10):
 
 1. Migrar `String id` → `Id` value object en `Student` y `Course` (§4.3).
-2. Migrar `InvalidStudentException`/`InvalidCourseException` →
-   `DomainError.createValidation(...)`; `StudentAlreadyExistsException`/
+2. Reorganizar `domain/` en subpaquetes `entities/`/`valueobjects/`/`services/`/
+   `errors/`/`repositories/` según la estructura de módulo del §1 (hoy plano en ambos
+   microservicios). Extraer `CourseCapacity` (Value Object, `maxCapacity > 0`) de
+   `Course` y `Email` de `Student` como Value Objects propios en `valueobjects/`
+   (decisión de José, Fase 2 Día 4: programada para esta migración, no antes).
+3. Migrar `InvalidStudentException`/`InvalidCourseException` →
+   `ValidationError.create(...)`; `StudentAlreadyExistsException`/
    `CourseAlreadyExistsException` → `DomainError.createAlreadyExists(...)` (§6).
-3. Renombrar los tests existentes de `should*` a lenguaje de dominio (§8.3).
-4. Extraer `RegisterStudentUseCase`/`CreateCourseUseCase` del código actual del handler.
-5. El handler pasa a depender del UseCase, no directamente del `Repository`, y su mapeo
+4. Renombrar los tests existentes de `should*` a lenguaje de dominio (§8.3).
+5. Extraer `RegisterStudentUseCase`/`CreateCourseUseCase` del código actual del handler.
+6. El handler pasa a depender del UseCase, no directamente del `Repository`, y su mapeo
    de errores usa el `statusMap` de `DomainError.getType()` (§7).
-6. Añadir `InMemoryStudentRepository`/`InMemoryCourseRepository` junto a la interfaz.
-7. Crear `StudentsServiceFactory`/`CoursesServiceFactory`.
-8. Se añaden tests de UseCase nuevos, usando el repositorio InMemory.
+7. Añadir `InMemoryStudentRepository`/`InMemoryCourseRepository` junto a la interfaz.
+8. Crear `StudentsServiceFactory`/`CoursesServiceFactory`.
+9. Se añaden tests de UseCase nuevos, usando el repositorio InMemory.
 
 Este refactor se hace **microservicio a microservicio**, no todo de golpe (regla ya
 fijada en las instrucciones del proyecto).

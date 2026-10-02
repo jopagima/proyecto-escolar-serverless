@@ -8,7 +8,7 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 2 (Cursos)
-Día: 6 (cerrado) — pendiente Día 7 (S3 presigned + Cognito, ver "Pendiente")
+Día: 7 (en curso — S3 presigned, TODOs 4-7 del Lambda handler pendientes)
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -152,6 +152,30 @@ Día: 6 (cerrado) — pendiente Día 7 (S3 presigned + Cognito, ver "Pendiente")
   DynamoDB, y qué hacer con los alumnos ya guardados en Fase 1 con IDs no-UUID
   (`"s-001"`), que `Id.generateFromPlainTextIdentifier` rechazaría con `ValidationError`
   — dato real ya en la tabla de producción, no solo un caso hipotético.
+- Fase 2, Día 7 (en curso) — **S3 presigned URL para foto de alumno**. Reordenado el
+  día original "S3+Cognito" en tres: Día 7 = S3, Día 8 = Cognito, Día 9 = Observabilidad
+  (confirmado por José). `StudentsPhotoBucketConstruct` (CDK, bucket privado,
+  `BlockPublicAccess.BLOCK_ALL`), `PhotoStoragePort` (puerto en
+  `application/ports/`), `RequestStudentPhotoUploadUseCase`, `S3PhotoStorageAdapter`
+  (con `S3Presigner`, `signatureDuration` 10 min). 14 tests en verde en
+  `students-service`, 7 en `infra`.
+  **Bug real detectado por José, no por el test**: el `UseCase` construía la
+  `objectKey` de S3 a partir del `studentId` recibido **sin validarlo como `Id`** —
+  cualquier string, bien formado o no, generaba una presigned URL válida. El test de
+  partida usaba `"s-abc-123"` como placeholder, que nunca sería un UUID real, y no lo
+  detectó porque tampoco el propio `UseCase` validaba. Corregido: el `UseCase` ahora
+  llama a `Id.generateFromPlainTextIdentifier(studentId)` antes de construir la clave
+  — un `studentId` mal formado lanza `ValidationError` (422), coherente con el resto
+  de `students-service`. Añadida regla explícita a `guidelinesHexagonal-serverless.md`
+  (§8.3b nueva, y §13): toda fixture de identificador en tests usa
+  `Id.generateUniqueIdentifier().toString()`, nunca un placeholder inventado; todo
+  UseCase valida vía `Id` antes de usar un identificador recibido como `String`.
+  Lambda handler (`RequestStudentPhotoUploadHandler`, ruta
+  `GET /students/{id}/photo-upload-url`) y su cableado en `StudentsApiConstruct`/
+  `StudentsStack` dados como código de partida, pendientes de que José resuelva los
+  TODOs 4-7 y verifique antes de desplegar (toca `infra/` y permisos IAM nuevos sobre
+  el bucket — mismo rigor de revisar el `git diff` antes de `cdk deploy`/push que en
+  el Día 6).
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
@@ -357,11 +381,19 @@ diario ("Hecho hasta ahora") y las dos decisiones que quedan ahí documentadas
   se documenta como limitación conocida y aceptada, sin migración de datos. Si llegan a
   estorbar, se borran de la tabla a mano.
 
-**Fase 2, Día 7 — S3 presigned URL (foto de alumno) + Cognito (grupos de roles)**:
-pendiente desde la Fase 1. El curso de certificación AWS Developer (`Developing on
-AWS`, módulos 5-6 y 12) confirma que ambos son bloques de examen con peso real.
+**Fase 2, Día 7 (en curso) — S3 presigned URL (foto de alumno)**: dominio/UseCase/
+adaptador cerrados y verificados (14 tests). Falta resolver los TODOs 4-7 del Lambda
+handler (`RequestStudentPhotoUploadHandler`) y su ruta en `StudentsApiConstruct`/
+`StudentsStack`, verificar `mvn clean install`, revisar el `git diff` de `infra/`, y
+desplegar + reverificar con una petición real contra el endpoint, mismo rigor que el
+Día 6.
 
-**Fase 2, Día 8 — Observabilidad (CloudWatch + X-Ray)**: módulo 14 de 15 del mismo
+**Fase 2, Día 8 — Cognito (grupos de roles)**: separado de S3 en un día propio
+(reordenamiento confirmado por José). Pendiente desde la Fase 1. El curso de
+certificación AWS Developer (`Developing on AWS`, módulo 12) confirma que es un bloque
+de examen con peso real.
+
+**Fase 2, Día 9 — Observabilidad (CloudWatch + X-Ray)**: módulo 14 de 15 del mismo
 curso. Alcance a definir (métricas custom vía EMF, trazas X-Ray sobre API Gateway →
 Lambda → DynamoDB).
 
