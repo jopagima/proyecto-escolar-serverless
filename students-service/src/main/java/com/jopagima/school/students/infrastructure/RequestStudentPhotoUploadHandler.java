@@ -6,9 +6,15 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.jopagima.school.commons.domain.Id;
 import com.jopagima.school.students.application.RequestStudentPhotoUploadUseCase;
+import com.jopagima.school.students.infrastructure.factory.StudentsServiceFactory;
 
 public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
     private final RequestStudentPhotoUploadUseCase useCase;
+
+    public RequestStudentPhotoUploadHandler() {
+        this.useCase = StudentsServiceFactory.createRequestStudentPhotoUploadUseCase();
+        
+    }
 
     public RequestStudentPhotoUploadHandler(RequestStudentPhotoUploadUseCase useCase) {
         this.useCase = useCase;

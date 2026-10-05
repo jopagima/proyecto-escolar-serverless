@@ -3,6 +3,11 @@ package com.jopagima.school.students.infrastructure.factory;
 import com.jopagima.school.students.application.RegisterStudentUseCase;
 import com.jopagima.school.students.domain.repositories.StudentRepository;
 import com.jopagima.school.students.infrastructure.adapters.DynamoDbStudentRepository;
+import com.jopagima.school.students.application.RequestStudentPhotoUploadUseCase;
+import com.jopagima.school.students.application.ports.PhotoStoragePort;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import com.jopagima.school.students.infrastructure.adapters.S3PhotoStorageAdapter;
+
 
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
@@ -17,6 +22,13 @@ public final class StudentsServiceFactory {
 
     public static RegisterStudentUseCase createRegisterStudentUseCase() {
         return new RegisterStudentUseCase(getStudentRepository());
+    }
+
+    public static RequestStudentPhotoUploadUseCase createRequestStudentPhotoUploadUseCase() {
+        S3Presigner presigner = S3Presigner.create();
+        String bucketName = System.getenv("BUCKET_NAME");   
+        PhotoStoragePort photoStoragePort = new S3PhotoStorageAdapter(presigner, bucketName);
+        return new RequestStudentPhotoUploadUseCase(photoStoragePort);
     }
 
     private static StudentRepository getStudentRepository() {
