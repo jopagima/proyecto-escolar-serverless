@@ -1,0 +1,27 @@
+package com.jopagima.school.students.infrastructure;
+
+import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.RequestHandler;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
+import com.jopagima.school.commons.domain.Id;
+import com.jopagima.school.students.application.RequestStudentPhotoUploadUseCase;
+
+public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
+    private final RequestStudentPhotoUploadUseCase useCase;
+
+    public RequestStudentPhotoUploadHandler(RequestStudentPhotoUploadUseCase useCase) {
+        this.useCase = useCase;
+    }
+
+    @Override
+    public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent input, Context context) {
+        String studentIdFromPath = input.getPathParameters().get("studentId");
+        Id studentId = Id.generateFromPlainTextIdentifier(studentIdFromPath);
+        String uploadUrl = useCase.execute(studentId);
+        return APIGatewayV2HTTPResponse.builder()
+                .withStatusCode(200)
+                .withBody("{\"uploadUrl\": \"" + uploadUrl + "\"}")
+                .build();   
+    } 
+}
