@@ -216,6 +216,12 @@ public class RegisterStudentUseCase {
 **Parámetros pensados para terminal (Terminal-Friendly Parameters)**: preferir parámetros
 primitivos directos frente a un objeto `Request` innecesario cuando hay ≤3 parámetros.
 
+**Sin excepciones en el proyecto**: todos los UseCases (`RegisterStudentUseCase`,
+`EnrollStudentInCourseUseCase`, `RequestStudentPhotoUploadUseCase`) reciben primitivos y
+convierten a `Id` dentro. En Fase 2 Día 7 se probó `execute(Id)` en
+`RequestStudentPhotoUploadUseCase` y se revirtió tras revisar el coste: el UseCase deja de
+ser uniforme y cada llamador tiene que repetir la conversión y la captura del error.
+
 ```java
 // PEOR — objeto Request complejo para pocos parámetros
 public StudentDTO execute(RegisterStudentRequest request) { ... }
@@ -781,6 +787,11 @@ identificador como `String` en su frontera (§4.2) debe convertirlo a `Id` vía
 construir una clave de S3, consultar un repositorio, etc. — para que un identificador
 mal formado falle con `ValidationError` (422) de forma temprana y consistente, en vez
 de propagarse silenciosamente. Ver §13.
+
+**Dónde se testea**: el rechazo de un identificador mal formado se verifica en el test del
+UseCase (`doesNotAllowMalformedStudentId`, que espera `ValidationError`); el test del
+handler (`returns422WhenStudentIdIsMalformed`) solo comprueba que ese error se traduce a
+HTTP 422. El valor inválido debe tener un nombre que lo diga (`malformedStudentId`).
 
 ### 8.4 Estructura AAA (Arrange-Act-Assert)
 

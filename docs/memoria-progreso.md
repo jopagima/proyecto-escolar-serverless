@@ -8,7 +8,7 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 2 (Cursos)
-Día: 7 (en curso — S3 presigned, TODOs 4-7 del Lambda handler pendientes)
+Día: 7 (en curso — S3 presigned: dominio y handler casi cerrados, cableado CDK pospuesto)
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -163,19 +163,37 @@ Día: 7 (en curso — S3 presigned, TODOs 4-7 del Lambda handler pendientes)
   `objectKey` de S3 a partir del `studentId` recibido **sin validarlo como `Id`** —
   cualquier string, bien formado o no, generaba una presigned URL válida. El test de
   partida usaba `"s-abc-123"` como placeholder, que nunca sería un UUID real, y no lo
-  detectó porque tampoco el propio `UseCase` validaba. Corregido: el `UseCase` ahora
-  llama a `Id.generateFromPlainTextIdentifier(studentId)` antes de construir la clave
-  — un `studentId` mal formado lanza `ValidationError` (422), coherente con el resto
-  de `students-service`. Añadida regla explícita a `guidelinesHexagonal-serverless.md`
-  (§8.3b nueva, y §13): toda fixture de identificador en tests usa
-  `Id.generateUniqueIdentifier().toString()`, nunca un placeholder inventado; todo
-  UseCase valida vía `Id` antes de usar un identificador recibido como `String`.
-  Lambda handler (`RequestStudentPhotoUploadHandler`, ruta
-  `GET /students/{id}/photo-upload-url`) y su cableado en `StudentsApiConstruct`/
-  `StudentsStack` dados como código de partida, pendientes de que José resuelva los
-  TODOs 4-7 y verifique antes de desplegar (toca `infra/` y permisos IAM nuevos sobre
-  el bucket — mismo rigor de revisar el `git diff` antes de `cdk deploy`/push que en
-  el Día 6).
+  detectó porque tampoco el propio `UseCase` validaba. Añadida regla explícita a
+  `guidelinesHexagonal-serverless.md` (§8.3b nueva, y §13): toda fixture de
+  identificador en tests usa `Id.generateUniqueIdentifier().toString()`, nunca un
+  placeholder inventado; todo identificador recibido como `String` se convierte a `Id`
+  antes de usarlo.
+  **Firma de `RequestStudentPhotoUploadUseCase.execute`**: José probó primero
+  `execute(Id)` (conversión y 422 en el handler, como excepción a §4.2) y, tras revisar
+  el coste de dejar los UseCases no uniformes, **volvió a `execute(String)`** con la
+  conversión a `Id` dentro. Los tres UseCases del proyecto reciben primitivos, sin
+  excepciones. `doesNotAllowMalformedStudentId` vive en el test del UseCase; el test del
+  handler solo verificará que `ValidationError` se traduce a 422.
+  Estado al cierre de la sesión: **16 tests en verde en `students-service`**.
+  Hecho: bucket CDK (test en verde), `PhotoStoragePort`, `RequestStudentPhotoUploadUseCase`
+  (2 tests), `S3PhotoStorageAdapter`, `RequestStudentPhotoUploadHandler` con su primer
+  test, constructor sin argumentos y `StudentsServiceFactory.
+  createRequestStudentPhotoUploadUseCase()`. La variable de entorno del bucket es
+  **`PHOTO_BUCKET_NAME`** (renombrada desde `BUCKET_NAME`); la clave en el `.environment`
+  de CDK tendrá que ser exactamente esa. El path parameter se llama **`studentId`**: la
+  ruta de CDK debe ser `GET /students/{studentId}/photo-upload-url`, o el handler
+  recibirá `null` en producción.
+  Pendiente en el handler: tests `returns400WhenPathParameterMissing` y
+  `returns422WhenStudentIdIsMalformed` (uno por commit) y sustituir el JSON
+  concatenado a mano por `ObjectMapper`.
+  **Cableado de CDK pospuesto por José a otro día** (TODOs 6-7: Lambda, ruta, `grantPut`
+  y la variable de entorno en `StudentsApiConstruct`, y cambio de firma con el `Bucket`
+  en `StudentsStack`). Hasta entonces el handler está en el jar pero ninguna ruta
+  apunta a él: subirlo al pipeline no expone nada. Al retomarlo, revisar el
+  `git diff -- infra/` antes de `cdk deploy`/push (permisos IAM nuevos sobre el bucket),
+  como en el Día 6. Observado de paso en `StudentsApiConstruct`: la Lambda de registro
+  ya tiene `Tracing.ACTIVE` (X-Ray), adelantando parte del Día 9, con un comentario en
+  español y una marca de cita `[6]` pegada que conviene limpiar.
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
@@ -381,12 +399,16 @@ diario ("Hecho hasta ahora") y las dos decisiones que quedan ahí documentadas
   se documenta como limitación conocida y aceptada, sin migración de datos. Si llegan a
   estorbar, se borran de la tabla a mano.
 
-**Fase 2, Día 7 (en curso) — S3 presigned URL (foto de alumno)**: dominio/UseCase/
-adaptador cerrados y verificados (14 tests). Falta resolver los TODOs 4-7 del Lambda
-handler (`RequestStudentPhotoUploadHandler`) y su ruta en `StudentsApiConstruct`/
-`StudentsStack`, verificar `mvn clean install`, revisar el `git diff` de `infra/`, y
-desplegar + reverificar con una petición real contra el endpoint, mismo rigor que el
-Día 6.
+**Fase 2, Día 7 (en curso) — S3 presigned URL (foto de alumno)**: dominio, UseCase,
+adaptador y handler con su primer test cerrados (16 tests en `students-service`).
+Pendiente en `students-service`: los tests `returns400WhenPathParameterMissing` y
+`returns422WhenStudentIdIsMalformed` del handler, y el `ObjectMapper`. Pendiente en
+`infra/` (pospuesto por José a otro día): TODOs 6-7 de `StudentsApiConstruct` (Lambda,
+ruta `GET /students/{studentId}/photo-upload-url`, `grantPut`, variable
+`PHOTO_BUCKET_NAME`) y el cambio de firma con el `Bucket` en `StudentsStack`. Al
+retomarlo: revisar `git diff -- infra/`, `mvn clean install`, desplegar y reverificar
+con una petición real contra el endpoint, mismo rigor que el Día 6. El día no se cierra
+hasta que esa petición real funcione.
 
 **Fase 2, Día 8 — Cognito (grupos de roles)**: separado de S3 en un día propio
 (reordenamiento confirmado por José). Pendiente desde la Fase 1. El curso de
