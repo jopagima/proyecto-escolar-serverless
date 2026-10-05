@@ -62,3 +62,4 @@ yarn-error.log*
 # Test / coverage
 coverage/
 *.execguidelinesHexagonal*.md
+docs/guidelinesHexagonal-serverless.md
