@@ -24,7 +24,7 @@ public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatew
     public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent input, Context context) {
         String studentIdFromPath = input.getPathParameters().get("studentId");
         Id studentId = Id.generateFromPlainTextIdentifier(studentIdFromPath);
-        String uploadUrl = useCase.execute(studentId);
+        String uploadUrl = useCase.execute(studentId.toString());
         return APIGatewayV2HTTPResponse.builder()
                 .withStatusCode(200)
                 .withBody("{\"uploadUrl\": \"" + uploadUrl + "\"}")

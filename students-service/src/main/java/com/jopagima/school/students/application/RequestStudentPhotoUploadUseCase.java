@@ -11,8 +11,9 @@ public class RequestStudentPhotoUploadUseCase {
         this.photoStoragePort = photoStoragePort;
     }
 
-    public String execute(Id studentId) {
-        String objectKey = "students/" + studentId + "/photo";
+    public String execute(String studentId) {
+        Id id = Id.generateFromPlainTextIdentifier(studentId);
+        String objectKey = "students/" + id + "/photo";
         return photoStoragePort.generateUploadUrl(objectKey);
 
     }
