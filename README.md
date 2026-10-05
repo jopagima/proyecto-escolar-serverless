@@ -62,13 +62,11 @@ Each service module follows a hexagonal layout: `domain/entities` (autovalidated
 entities), `domain/valueobjects` (e.g. `CourseCapacity`), `domain/repositories` (ports
 + InMemory implementations, one file each in the same package),
 `domain/services` (pure Domain Services), `application` (Use Cases, single public
-`execute(...)` entry point, primitive parameters — see
-`guidelinesHexagonal-serverless.md` §4.2), `infrastructure/adapters` (DynamoDB
-repositories) and `infrastructure` (Lambda handlers). `courses-service` is fully
-migrated to this layout (Fase 2 Día 5); `students-service` retrofit is next (Día 6) —
-see [`guidelinesHexagonal-serverless.md`](./guidelinesHexagonal-serverless.md) for the
-full convention and [`openspec/specs/hexagonal-retrofit.md`](./openspec/specs/hexagonal-retrofit.md)
-for the retrofit contract.
+`execute(...)` entry point, primitive parameters), `infrastructure/adapters` (DynamoDB
+repositories) and `infrastructure` (Lambda handlers). Both `courses-service` (Fase 2
+Día 5) and `students-service` (Fase 2 Día 6) are migrated to this layout; see
+[`openspec/specs/hexagonal-retrofit.md`](./openspec/specs/hexagonal-retrofit.md) for the
+retrofit contract.
 
 ## Design conventions
 
@@ -88,7 +86,7 @@ for the retrofit contract.
   already read from persistence, without revalidating.
 - **Two error types, not one**: `ValidationError` (format/invariant violations, always
   HTTP 422) and `DomainError` (`notFound`/`alreadyExists`/`other`, mapped per type) —
-  see `guidelinesHexagonal-serverless.md` §6. Replaces per-entity exception classes.
+  Replaces per-entity exception classes.
 - **TDD**, reinforced for any code touching the AWS SDK: business logic is unit-tested
   against mocked SDK clients (Mockito); every adapter has a dedicated contract test.
 - **Domain purity:** entities and ports never import AWS SDK, Lambda, or JSON
@@ -164,9 +162,9 @@ write. The pipeline (Source → Synth → SelfMutate → Assets → Deploy) runs
 end-to-end.
 
 **Phase 2 (Courses) in progress — Día 6 of 8 closed.** Both `courses-service` and
-`students-service` are fully migrated to the hexagonal layout defined in
-`guidelinesHexagonal-serverless.md`, applied via the `hexagonal-retrofit` Claude Code
-Skill (`.claude/skills/hexagonal-retrofit/`) — `courses-service` in one batched commit
+`students-service` are fully migrated to the hexagonal layout, applied via the
+`hexagonal-retrofit` Claude Code Skill (`.claude/skills/hexagonal-retrofit/`) —
+`courses-service` in one batched commit
 (no Lambda deployed yet, low risk), `students-service` with one approved commit per
 verified step (Lambda already live). Two deliberate API contract changes shipped with
 the `students-service` retrofit and verified against the live endpoint: `Id` is now a
