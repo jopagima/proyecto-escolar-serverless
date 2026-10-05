@@ -26,7 +26,7 @@ public final class StudentsServiceFactory {
 
     public static RequestStudentPhotoUploadUseCase createRequestStudentPhotoUploadUseCase() {
         S3Presigner presigner = S3Presigner.create();
-        String bucketName = System.getenv("BUCKET_NAME");   
+        String bucketName = System.getenv("PHOTO_BUCKET_NAME");   
         PhotoStoragePort photoStoragePort = new S3PhotoStorageAdapter(presigner, bucketName);
         return new RequestStudentPhotoUploadUseCase(photoStoragePort);
     }
