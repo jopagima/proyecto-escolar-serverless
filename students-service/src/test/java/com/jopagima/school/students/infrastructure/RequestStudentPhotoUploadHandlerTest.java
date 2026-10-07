@@ -46,4 +46,19 @@ public class RequestStudentPhotoUploadHandlerTest {
 
         assertEquals(400, response.getStatusCode());
     }   
+
+    @Test
+    void returns422WhenStudentIdIsMalformed() {
+        PhotoStoragePort fakePort = objectKey -> "unused";
+        RequestStudentPhotoUploadHandler handler =
+                new RequestStudentPhotoUploadHandler(new RequestStudentPhotoUploadUseCase(fakePort));
+
+
+    
+        APIGatewayV2HTTPEvent event = new APIGatewayV2HTTPEvent();
+        event.setPathParameters(Map.of("studentId", "not-a-uuid"));
+        APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);
+
+        assertEquals(422, response.getStatusCode());
+    }      
 }

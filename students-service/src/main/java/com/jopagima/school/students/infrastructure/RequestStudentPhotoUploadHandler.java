@@ -30,7 +30,7 @@ public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatew
                     .withBody("{\"error\": \"Missing student ID in path parameters\"}")
                     .build();
         }
-
+        try {
             Id studentId = Id.generateFromPlainTextIdentifier(studentIdFromPath);
             String uploadUrl = useCase.execute(studentId.toString());
             return APIGatewayV2HTTPResponse.builder()
@@ -38,6 +38,12 @@ public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatew
                     .withBody("{\"uploadUrl\": \"" + uploadUrl + "\"}")
                     .build();
 
+        } catch (ValidationError e) {
+            return APIGatewayV2HTTPResponse.builder()
+                    .withStatusCode(422)
+                    .withBody("{\"error\": \"" + e.getMessage() + "\"}")
+                    .build();
+        }
     }
 }
 
