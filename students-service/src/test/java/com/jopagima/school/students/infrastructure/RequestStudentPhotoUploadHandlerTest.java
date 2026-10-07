@@ -31,4 +31,19 @@ public class RequestStudentPhotoUploadHandlerTest {
     assertEquals(200, response.getStatusCode());
     assertTrue(response.getBody().contains("fake-bucket/students/" + studentId + "/photo"));
    }  
+
+    @Test
+    void returns400WhenPathParameterMissing() {
+        PhotoStoragePort fakePort = objectKey -> "unused";
+        RequestStudentPhotoUploadHandler handler =
+                new RequestStudentPhotoUploadHandler(new RequestStudentPhotoUploadUseCase(fakePort));
+
+
+    
+        APIGatewayV2HTTPEvent event = new APIGatewayV2HTTPEvent();
+        event.setPathParameters(Map.of());
+        APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);
+
+        assertEquals(400, response.getStatusCode());
+    }   
 }
