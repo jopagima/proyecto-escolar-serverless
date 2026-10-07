@@ -4,7 +4,6 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
-import com.jopagima.school.commons.domain.Id;
 import com.jopagima.school.commons.domain.ValidationError;
 import com.jopagima.school.students.application.RequestStudentPhotoUploadUseCase;
 import com.jopagima.school.students.infrastructure.factory.StudentsServiceFactory;
@@ -31,8 +30,7 @@ public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatew
                     .build();
         }
         try {
-            Id studentId = Id.generateFromPlainTextIdentifier(studentIdFromPath);
-            String uploadUrl = useCase.execute(studentId.toString());
+            String uploadUrl = useCase.execute(studentIdFromPath);
             return APIGatewayV2HTTPResponse.builder()
                     .withStatusCode(200)
                     .withBody("{\"uploadUrl\": \"" + uploadUrl + "\"}")
