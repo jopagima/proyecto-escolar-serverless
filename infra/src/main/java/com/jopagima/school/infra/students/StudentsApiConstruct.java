@@ -11,6 +11,7 @@ import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.lambda.Tracing;
+import software.amazon.awscdk.services.s3.Bucket;
 import software.constructs.Construct;
 import java.io.File;
 import java.util.Map;
@@ -24,12 +25,13 @@ public class StudentsApiConstruct extends Construct {
 
 
     private final Function registerStudentFunction;
+    private final Function photoUploadFunction;
 
     public Function getRegisterStudentFunction() {
         return registerStudentFunction;
     }
 
-    public StudentsApiConstruct(Construct scope, String id, Table table) {
+    public StudentsApiConstruct(Construct scope, String id, Table table, Bucket bucket) {
         super(scope, id);
 
 
@@ -51,17 +53,36 @@ public class StudentsApiConstruct extends Construct {
             ))
             .build();
         table.grantWriteData(this.registerStudentFunction);
-        // TODO 6: grant registerStudentFunction write access to studentsTable using
-        //   studentsTable.grantWriteData(registerStudentFunction) — minimum privilege,
-        //   this Lambda only writes today.
+
+
+        this.photoUploadFunction = Function.Builder.create(this, "PhotoUploadFunction")
+            .runtime(Runtime.JAVA_17)
+            .functionName("PhotoUploadFunction")
+             .code(Code.fromAsset(resolveStudentsServiceJarPath()))
+            .handler("com.jopagima.school.students.infrastructure.RequestStudentPhotoUploadHandler::handleRequest")
+                .memorySize(512)
+                .timeout(Duration.seconds(15))
+                .tracing(Tracing.ACTIVE) // Habilita Observabilidad con X-Ray [6]            
+            .environment(Map.of(
+                "PHOTO_BUCKET_NAME",  bucket.getBucketName()
+            ))
+            .build();
 
         HttpApi httpApi = HttpApi.Builder.create(this, "StudentsHttpApi").build();
 
-        httpApi.addRoutes(AddRoutesOptions.builder()
+        AddRoutesOptions registerRoute = AddRoutesOptions.builder()
            .path("/students")
            .methods(java.util.List.of(HttpMethod.POST))
            .integration(new HttpLambdaIntegration("RegisterStudentIntegration", registerStudentFunction))
-           .build());        
+           .build();
+
+        AddRoutesOptions photoUploadRoute = AddRoutesOptions.builder()
+           .path("/students/{studentId}/photo-upload-url")
+           .methods(java.util.List.of(HttpMethod.GET))
+           .integration(new HttpLambdaIntegration("PhotoUploadIntegration", photoUploadFunction))
+           .build();
+        httpApi.addRoutes(registerRoute);        
+        httpApi.addRoutes(photoUploadRoute);
     }
 
     /**

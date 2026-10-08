@@ -4,9 +4,13 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+
+
 import software.amazon.awscdk.Stack;
+import software.amazon.awscdk.assertions.Match;
 import software.amazon.awscdk.assertions.Template;
 import software.amazon.awscdk.services.dynamodb.Table;
+import software.amazon.awscdk.services.s3.Bucket;
 
 public class StudentsApiConstructTest {
 
@@ -14,10 +18,10 @@ public class StudentsApiConstructTest {
    void shouldCreateLambdaFunctionAndHttpApiRoute(){
         
         Stack stack = new Stack();
-        StudentsTableConstruct tableConstruct = new StudentsTableConstruct(stack, "StudentsTable");
-        Table table = tableConstruct.getTable();
+        Table table = new StudentsTableConstruct(stack, "StudentsTable").getTable();
+        Bucket bucket = new StudentsPhotoBucketConstruct(stack, "StudentsPhotoBucket").getBucket();
 
-        new StudentsApiConstruct(stack, "StudentsApi", table);
+        new StudentsApiConstruct(stack, "StudentsApi", table, bucket);
         Template template = Template.fromStack(stack);
 
         // Verify that the Lambda function is created with the correct properties
@@ -34,7 +38,28 @@ public class StudentsApiConstructTest {
                  "ProtocolType", "HTTP"
             )
         );
-        template.resourceCountIs("AWS::ApiGatewayV2::Route", 1);
+        template.hasResourceProperties("AWS::ApiGatewayV2::Route", Map.of(
+                "RouteKey", "POST /students"
+        ));
    } 
+    @Test
+    void createsPhotoUploadFunctionAndRoute() {
+        Stack stack = new Stack();
+        Table table = new StudentsTableConstruct(stack, "StudentsTable").getTable();
+        Bucket bucket = new StudentsPhotoBucketConstruct(stack, "StudentsPhotoBucket").getBucket();
+
+        new StudentsApiConstruct(stack, "StudentsApi", table, bucket);
+
+        Template template = Template.fromStack(stack);
+
+        template.hasResourceProperties("AWS::Lambda::Function", Map.of(
+                "Handler", "com.jopagima.school.students.infrastructure.RequestStudentPhotoUploadHandler::handleRequest",
+                "Environment", Map.of("Variables",
+                        Match.objectLike(Map.of("PHOTO_BUCKET_NAME", Match.anyValue())))
+        ));
+        template.hasResourceProperties("AWS::ApiGatewayV2::Route", Map.of(
+                "RouteKey", "GET /students/{studentId}/photo-upload-url"
+        ));
+    }  
 
 }
