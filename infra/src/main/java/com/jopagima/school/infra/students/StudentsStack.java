@@ -15,9 +15,10 @@ public class StudentsStack extends Stack {
 
         // Create the DynamoDB table
         StudentsTableConstruct studentsTable = new StudentsTableConstruct(this, "StudentsTable");
+        StudentsPhotoBucketConstruct studentsPhotoBucket = new StudentsPhotoBucketConstruct(this, "StudentsPhotoBucket");
 
         // Create the Lambda function and API Gateway
-        new StudentsApiConstruct (this, "StudentsApi", studentsTable.getTable());
+        new StudentsApiConstruct (this, "StudentsApi", studentsTable.getTable(), studentsPhotoBucket.getBucket());
     }
 
 }
