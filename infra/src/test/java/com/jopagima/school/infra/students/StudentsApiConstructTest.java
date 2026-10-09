@@ -1,5 +1,8 @@
 package com.jopagima.school.infra.students;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -15,7 +18,8 @@ import software.amazon.awscdk.services.s3.Bucket;
 
 public class StudentsApiConstructTest {
 
-private Template template;
+    private Template template;
+    
 
     @BeforeEach
     void setUp() {
@@ -59,6 +63,15 @@ private Template template;
         template.hasResourceProperties("AWS::ApiGatewayV2::Route", Map.of(
                 "RouteKey", "GET /students/{studentId}/photo-upload-url"
         ));
-    }  
+    } 
+    
+    @Test
+    void grantsOnlyWriteAccessToPhotosBucket() {
+        String policies = template.findResources("AWS::IAM::Policy").toString();
+
+        assertTrue(policies.contains("s3:PutObject"));
+        assertFalse(policies.contains("s3:GetObject"));
+        assertFalse(policies.contains("s3:DeleteObject"));
+    }    
 
 }

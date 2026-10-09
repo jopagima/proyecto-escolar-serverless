@@ -7,6 +7,8 @@ import software.amazon.awscdk.services.apigatewayv2.HttpApi;
 import software.amazon.awscdk.services.apigatewayv2.HttpMethod;
 import software.amazon.awscdk.aws_apigatewayv2_integrations.HttpLambdaIntegration;
 import software.amazon.awscdk.services.dynamodb.Table;
+import software.amazon.awscdk.services.iam.Effect;
+import software.amazon.awscdk.services.iam.PolicyStatement;
 import software.amazon.awscdk.services.lambda.Code;
 import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
@@ -14,6 +16,7 @@ import software.amazon.awscdk.services.lambda.Tracing;
 import software.amazon.awscdk.services.s3.Bucket;
 import software.constructs.Construct;
 import java.io.File;
+import java.util.List;
 import java.util.Map;
 
 public class StudentsApiConstruct extends Construct {
@@ -67,6 +70,12 @@ public class StudentsApiConstruct extends Construct {
                 "PHOTO_BUCKET_NAME",  bucket.getBucketName()
             ))
             .build();
+
+        this.photoUploadFunction.addToRolePolicy(PolicyStatement.Builder.create()
+            .effect(Effect.ALLOW)
+            .actions(List.of("s3:PutObject"))
+            .resources(List.of(bucket.arnForObjects("students/*")))
+            .build());
 
         HttpApi httpApi = HttpApi.Builder.create(this, "StudentsHttpApi").build();
 
