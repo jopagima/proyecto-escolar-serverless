@@ -2,6 +2,7 @@ package com.jopagima.school.infra.students;
 
 import java.util.Map;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 
@@ -14,16 +15,21 @@ import software.amazon.awscdk.services.s3.Bucket;
 
 public class StudentsApiConstructTest {
 
-    @Test
-   void shouldCreateLambdaFunctionAndHttpApiRoute(){
-        
+private Template template;
+
+    @BeforeEach
+    void setUp() {
         Stack stack = new Stack();
         Table table = new StudentsTableConstruct(stack, "StudentsTable").getTable();
         Bucket bucket = new StudentsPhotoBucketConstruct(stack, "StudentsPhotoBucket").getBucket();
-
         new StudentsApiConstruct(stack, "StudentsApi", table, bucket);
-        Template template = Template.fromStack(stack);
+        template = Template.fromStack(stack);
+    }
 
+
+    @Test
+   void shouldCreateLambdaFunctionAndHttpApiRoute(){
+        
         // Verify that the Lambda function is created with the correct properties
         template.hasResourceProperties("AWS::Lambda::Function", 
             Map.of(
@@ -44,13 +50,6 @@ public class StudentsApiConstructTest {
    } 
     @Test
     void createsPhotoUploadFunctionAndRoute() {
-        Stack stack = new Stack();
-        Table table = new StudentsTableConstruct(stack, "StudentsTable").getTable();
-        Bucket bucket = new StudentsPhotoBucketConstruct(stack, "StudentsPhotoBucket").getBucket();
-
-        new StudentsApiConstruct(stack, "StudentsApi", table, bucket);
-
-        Template template = Template.fromStack(stack);
 
         template.hasResourceProperties("AWS::Lambda::Function", Map.of(
                 "Handler", "com.jopagima.school.students.infrastructure.RequestStudentPhotoUploadHandler::handleRequest",
