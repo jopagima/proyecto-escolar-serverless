@@ -8,7 +8,7 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 2 (Cursos)
-Día: 7 (en curso — S3 presigned: dominio y handler casi cerrados, cableado CDK pospuesto)
+Día: 7 (casi cerrado — S3 presigned: código y cableado de CDK hechos; falta desplegar y la petición real)
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -174,26 +174,51 @@ Día: 7 (en curso — S3 presigned: dominio y handler casi cerrados, cableado CD
   conversión a `Id` dentro. Los tres UseCases del proyecto reciben primitivos, sin
   excepciones. `doesNotAllowMalformedStudentId` vive en el test del UseCase; el test del
   handler solo verificará que `ValidationError` se traduce a 422.
-  Estado al cierre de la sesión: **16 tests en verde en `students-service`**.
+  Estado al cierre de la sesión: **18 tests en verde en `students-service`**; el
+  handler y todo el código de `students-service` del Día 7 están **cerrados**.
   Hecho: bucket CDK (test en verde), `PhotoStoragePort`, `RequestStudentPhotoUploadUseCase`
-  (2 tests), `S3PhotoStorageAdapter`, `RequestStudentPhotoUploadHandler` con su primer
-  test, constructor sin argumentos y `StudentsServiceFactory.
-  createRequestStudentPhotoUploadUseCase()`. La variable de entorno del bucket es
-  **`PHOTO_BUCKET_NAME`** (renombrada desde `BUCKET_NAME`); la clave en el `.environment`
-  de CDK tendrá que ser exactamente esa. El path parameter se llama **`studentId`**: la
-  ruta de CDK debe ser `GET /students/{studentId}/photo-upload-url`, o el handler
-  recibirá `null` en producción.
-  Pendiente en el handler: tests `returns400WhenPathParameterMissing` y
-  `returns422WhenStudentIdIsMalformed` (uno por commit) y sustituir el JSON
-  concatenado a mano por `ObjectMapper`.
-  **Cableado de CDK pospuesto por José a otro día** (TODOs 6-7: Lambda, ruta, `grantPut`
-  y la variable de entorno en `StudentsApiConstruct`, y cambio de firma con el `Bucket`
-  en `StudentsStack`). Hasta entonces el handler está en el jar pero ninguna ruta
-  apunta a él: subirlo al pipeline no expone nada. Al retomarlo, revisar el
-  `git diff -- infra/` antes de `cdk deploy`/push (permisos IAM nuevos sobre el bucket),
-  como en el Día 6. Observado de paso en `StudentsApiConstruct`: la Lambda de registro
-  ya tiene `Tracing.ACTIVE` (X-Ray), adelantando parte del Día 9, con un comentario en
-  español y una marca de cita `[6]` pegada que conviene limpiar.
+  (2 tests; construye la clave de S3 con el `Id` ya convertido, no con el `String`
+  original, así un UUID en mayúsculas o minúsculas da la misma clave),
+  `S3PhotoStorageAdapter`, `RequestStudentPhotoUploadHandler` (3 tests: 200, 400 sin
+  parámetro, 422 con id mal formado), constructor sin argumentos y
+  `StudentsServiceFactory.createRequestStudentPhotoUploadUseCase()`. La variable de
+  entorno del bucket es **`PHOTO_BUCKET_NAME`** (renombrada desde `BUCKET_NAME`); la
+  clave en el `.environment` de CDK tendrá que ser exactamente esa. El path parameter se
+  llama **`studentId`**: la ruta de CDK debe ser `GET /students/{studentId}/
+  photo-upload-url`, o el handler recibirá `null` en producción.
+  **Forma final del handler**: guarda explícita antes de convertir nada (parámetro
+  ausente o vacío → 400); `try` solo alrededor de la llamada al `UseCase`;
+  `catch (ValidationError)` → 422; cualquier otro error no se captura y burbujea (500),
+  según §6. La conversión a `Id` vive únicamente en el `UseCase`; el handler pasa el
+  `String` del path tal cual. Respuestas serializadas con `ObjectMapper` mediante un
+  método privado `response(...)` (la excepción comprobada se convierte en
+  `IllegalStateException`).
+  **Lecciones del proceso (TDD)**: (1) un test que pasaba tras cambiar su dato de
+  entrada (`Map.of()` → `Map.of("studentId", "")`) dejó de comprobar lo que decía su
+  nombre — se restauró; modificar un test para que pase la implementación está
+  prohibido. (2) Un primer verde con `catch (Exception)` tapaba fallos técnicos como si
+  fueran 400; el test siguiente (422) obligó a estrechar el `catch`. (3) La conversión
+  doble a `Id` (handler y `UseCase`) se detectó y eliminó tras volver a `execute(String)`.
+  **Huecos conocidos, sin test todavía**: `getPathParameters()` nulo lanza
+  `NullPointerException` antes de la guarda (caso defensivo, API Gateway siempre envía el
+  parámetro con esa ruta; sin decidir si cubrirlo con `returns400WhenPathParametersAreNull`);
+  y en `commons`, `Id.generateFromPlainTextIdentifier(null)` lanza `NullPointerException`
+  en vez de `ValidationError` (candidato a un test `failsFromNullIdentifier`).
+  **Cableado de CDK realizado** (había sido pospuesto por José): `StudentsApiConstruct`
+  recibe ahora el `Bucket` (constructor de 4 parámetros) y crea `PhotoUploadFunction`
+  (mismo jar, handler `RequestStudentPhotoUploadHandler`, variable `PHOTO_BUCKET_NAME`),
+  la ruta `GET /students/{studentId}/photo-upload-url` y una política con solo
+  `s3:PutObject` sobre el bucket (ver la excepción a `grant*` en "Decisiones técnicas").
+  `StudentsStack` crea `StudentsPhotoBucketConstruct` y lo pasa. Tests nuevos en
+  `StudentsApiConstructTest`: `createsPhotoUploadFunctionAndRoute` y
+  `grantsOnlyWriteAccessToPhotosBucket` (dos veces rojo→verde); `infra` pasa a **9 tests
+  en verde**. Un primer `mvn test -pl infra` sin ninguna línea `T E S T S` parecía
+  verde pero no ejecutaba nada: comprobar siempre que aparezcan `Running ...` y
+  `Tests run:`. La primera versión llevaba una guarda `bucket != null ? ... : ""` que
+  habría dejado la Lambda con el nombre del bucket vacío en producción sin avisar, y
+  `grantReadWrite` en vez de un permiso solo de escritura; ambas se corrigieron antes de
+  comitear. La Lambda de registro ya tiene `Tracing.ACTIVE` (X-Ray), adelantando parte
+  del Día 9; la nueva lo copia.
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
@@ -225,7 +250,16 @@ Día: 7 (en curso — S3 presigned: dominio y handler casi cerrados, cableado CD
 - DTOs de entrada propios por frontera, separados de las entidades de dominio.
 - Integración Lambda-API Gateway de tipo proxy (no mapping templates VTL).
 - Una Lambda por operación (no un router interno con varias rutas).
-- Permisos IAM vía métodos `grant*` de CDK, nunca políticas manuales.
+- Permisos IAM vía métodos `grant*` de CDK, nunca políticas manuales. **Excepción
+  documentada (decisión de José, Fase 2 Día 7)**: `PhotoUploadFunction` usa una política
+  explícita (`addToRolePolicy`) con solo `s3:PutObject`, en vez de `bucket.grantPut(...)`,
+  porque `grantPut` añade además `PutObjectLegalHold`, `PutObjectRetention`,
+  `PutObjectVersionTagging` y `Abort*`, que esa Lambda no necesita. La excepción es local
+  a esta función, no una regla nueva: el resto de Lambdas siguen con `grant*`. Se mantiene
+  el test `grantsOnlyWriteAccessToPhotosBucket`, con aserciones negativas sobre
+  `s3:GetObject` y `s3:DeleteObject`, para que ese permiso no se amplíe sin que nadie lo
+  note. Coste asumido: un nombre de acción o ARN mal escrito falla en ejecución sin
+  avisar al desplegar, así que el test es obligatorio.
 - Cognito con grupos de roles: activado desde la Fase 1 — aún no implementado, pendiente.
 - Todo módulo de servicio con Lambdas incluye `maven-shade-plugin` desde su creación.
 - Todo handler Lambda necesita un constructor público sin argumentos (runtime Lambda
@@ -236,6 +270,12 @@ Día: 7 (en curso — S3 presigned: dominio y handler casi cerrados, cableado CD
   framework). Cubre las 5 skills originales completas (arquitectura hexagonal, design
   principles, git strategy, testing standards, XP/TDD). Se activa formalmente al cierre
   de la Fase 2 (Día 4), aplicada retroactivamente a Alumnos y Cursos.
+  **No se versiona** (decisión de José, Fase 2 Día 7): deriva de un documento ajeno cuyo
+  autor pidió que no fuera público. Ya no está en el repositorio (`git rm --cached` +
+  regla en `.gitignore`); solo se conserva en el disco de José y en la base de
+  conocimiento privada del Project. Las versiones anteriores siguen en el historial de
+  git (aceptado por José, sin reescribir). No sugerir comitearlo. En un equipo nuevo hay
+  que copiarlo a mano a `docs/`; la Skill `hexagonal-retrofit` lo lee en local.
 - **4 conflictos entre la guía hexagonal y el código ya escrito, resueltos por José**:
   (1) adoptar `Id` (UUID real, no string legible) — **con impacto de contrato de API
   no trivial**: el servidor pasa a generar el ID, el cliente deja de decidirlo; se
@@ -357,6 +397,14 @@ Día: 7 (en curso — S3 presigned: dominio y handler casi cerrados, cableado CD
   un fallo de permisos real — José tenía varias APIs en la cuenta (`PortFolioApi` de
   otro proyecto) y copió el ID incorrecto (Fase 2 Día 6). Verificar el ID de API contra
   la consola (**API Gateway → APIs**) antes de asumir un problema de IAM/CORS/WAF.
+- En Windows, con VS Code abierto, `mvn clean ...` puede fallar en `infra` con `Unable to
+  create test class ... CoursesTableConstructTest` y, en el `.dump` de
+  `target/surefire-reports`, `ClassNotFoundException` (Fase 2 Día 7). La clase existe: el
+  servidor de Java de la extensión de Red Hat (o el antivirus) regenera `target/` a la
+  vez que Surefire la carga. El aviso `Cannot use PPID ... NOOP events` del mismo
+  fichero es ruido de Surefire 2.22 en Windows 11. Con VS Code cerrado, el mismo
+  `mvn clean install` pasó (5 módulos). No es un fallo del proyecto: no tocar código ni
+  `pom.xml` ante este síntoma; diagnóstico por el `.dump`, no por la consola.
 
 ## Servicios AWS de la hoja de ruta original ya acoplados
 - DynamoDB — Fase 1, Día 1.
@@ -399,16 +447,27 @@ diario ("Hecho hasta ahora") y las dos decisiones que quedan ahí documentadas
   se documenta como limitación conocida y aceptada, sin migración de datos. Si llegan a
   estorbar, se borran de la tabla a mano.
 
-**Fase 2, Día 7 (en curso) — S3 presigned URL (foto de alumno)**: dominio, UseCase,
-adaptador y handler con su primer test cerrados (16 tests en `students-service`).
-Pendiente en `students-service`: los tests `returns400WhenPathParameterMissing` y
-`returns422WhenStudentIdIsMalformed` del handler, y el `ObjectMapper`. Pendiente en
-`infra/` (pospuesto por José a otro día): TODOs 6-7 de `StudentsApiConstruct` (Lambda,
-ruta `GET /students/{studentId}/photo-upload-url`, `grantPut`, variable
-`PHOTO_BUCKET_NAME`) y el cambio de firma con el `Bucket` en `StudentsStack`. Al
-retomarlo: revisar `git diff -- infra/`, `mvn clean install`, desplegar y reverificar
-con una petición real contra el endpoint, mismo rigor que el Día 6. El día no se cierra
-hasta que esa petición real funcione.
+**Fase 2, Día 7 (casi cerrado) — S3 presigned URL (foto de alumno)**: el código de
+`students-service` (18 tests) y el cableado de `infra/` (9 tests) están hechos y en
+verde: `PhotoUploadFunction` con `PHOTO_BUCKET_NAME`, ruta `GET /students/{studentId}/
+photo-upload-url`, `StudentsStack` con el bucket, y política con solo `s3:PutObject`
+(excepción documentada a `grant*`; test `grantsOnlyWriteAccessToPhotosBucket`).
+Pendiente para cerrar: (1) commit de limpieza de comentarios en `StudentsApiConstruct`
+(el de X-Ray `[6]`, duplicado y en español, y el bloque `Resolve the jar path...`
+suelto); (2) `cdk synth` y revisar los `*.template.json` (debe aparecer `s3:PutObject`
+sobre el bucket y ningún `s3:*`); (3) `mvn clean install` con VS Code cerrado en
+Windows, `git push`, esperar `Deploy`; (4) petición real: `GET` con un UUID da 200 con
+`uploadUrl`, `PUT` del fichero a esa URL, objeto visible en
+`s3://<bucket>/students/<uuid>/photo`, e id mal formado da 422. **El día no se cierra
+hasta que esa petición real funcione.** Sin decidir: acotar el recurso de la política a
+`bucket.arnForObjects("students/*")` en lugar de todo el bucket (recomendado; el test
+actual no lo comprueba). Mejoras opcionales anotadas: test
+`returns400WhenPathParametersAreNull`, test `failsFromNullIdentifier` en `commons`, y
+actualizar el Javadoc de `StudentsStack` (no menciona el bucket).
+**Limitación conocida**: el endpoint firma una URL para cualquier UUID válido, exista o
+no ese alumno (el `UseCase` no consulta `StudentRepository`); sin autenticación, podría
+dejar objetos huérfanos en el bucket. La autenticación del Día 8 (Cognito) cubre una
+parte; comprobar la existencia del alumno queda para más adelante.
 
 **Fase 2, Día 8 — Cognito (grupos de roles)**: separado de S3 en un día propio
 (reordenamiento confirmado por José). Pendiente desde la Fase 1. El curso de

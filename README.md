@@ -93,6 +93,10 @@ retrofit contract.
   serialization types.
 - **One Lambda per operation**, not a shared router.
 - **Least-privilege IAM** via CDK `grant*` methods, never manually authored policies.
+  One documented exception: the photo-upload function carries an explicit
+  `s3:PutObject`-only statement, because `grantPut` also adds retention, legal-hold and
+  multipart-abort actions it does not need; a test asserts the absence of read and
+  delete actions.
 - **Every Lambda handler ships a public no-arg constructor** wiring the real adapter
   (e.g. `DynamoDbClient.create()`), required by the Lambda Java runtime's reflection-based
   instantiation — the test constructor (accepting a mocked port) is separate.
@@ -118,7 +122,7 @@ explicitly, with an estimate, before being introduced.
 |---|---|---|
 | 0 | Setup & diagnosis | ✅ Closed |
 | 1 | Students (CRUD, DynamoDB, Lambda, API Gateway, CI/CD pipeline) | ✅ Closed — deployed and verified end-to-end in production |
-| 2 | Courses — hexagonal architecture | 🔄 In progress (Día 6 of 8 closed — both `courses-service` and `students-service` migrated to hexagonal) |
+| 2 | Courses — hexagonal architecture | 🔄 In progress (Día 6 of 9 closed — both services migrated to hexagonal; Día 7, student photo upload via S3 presigned URL, built and tested but not yet deployed) |
 | 3 | Exams / Questions | ⏳ Pending |
 | 4 | Answers | ⏳ Pending |
 | 5 | Subjects (parent/child hierarchy, cursor pagination) | ⏳ Pending |
@@ -161,7 +165,7 @@ API Gateway, backed by a Lambda (Java 17) writing to DynamoDB with an atomic con
 write. The pipeline (Source → Synth → SelfMutate → Assets → Deploy) runs green
 end-to-end.
 
-**Phase 2 (Courses) in progress — Día 6 of 8 closed.** Both `courses-service` and
+**Phase 2 (Courses) in progress — Día 6 of 9 closed.** Both `courses-service` and
 `students-service` are fully migrated to the hexagonal layout, applied via the
 `hexagonal-retrofit` Claude Code Skill (`.claude/skills/hexagonal-retrofit/`) —
 `courses-service` in one batched commit
@@ -176,4 +180,15 @@ exception — re-verified with `curl` against production
 Lambda handler yet — no HTTP endpoint deployed for that bounded context; a first
 `findById` for `students-service` still needs `Student.reconstitute`/
 `Email.reconstitute` and a decision on Phase-1-era non-UUID student ids already in the
-table. Next: Día 7, S3 presigned photo upload + Cognito role groups.
+table.
+
+**Día 7 — student photo upload (in progress, not yet deployed).** A `PhotoStoragePort`
+with an S3 presigned-PUT adapter, a use case that validates the student id and builds
+the object key, and `RequestStudentPhotoUploadHandler` (200 with `uploadUrl`, 400 for a
+missing path parameter, 422 for a malformed id; any other error propagates as a 500).
+In `infra/`, a private photos bucket (all public access blocked), a second Lambda and
+the route `GET /students/{studentId}/photo-upload-url`. Both modules build green
+locally. The day closes only after the pipeline deploys it and a real request
+confirms an upload reaches the bucket. Known limitation: the endpoint signs a URL for
+any well-formed UUID, whether or not that student exists. Next: Cognito role groups
+(Día 8), then observability with CloudWatch and X-Ray (Día 9).
