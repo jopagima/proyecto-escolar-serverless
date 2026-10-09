@@ -50,7 +50,7 @@ public class StudentsApiConstruct extends Construct {
             .handler("com.jopagima.school.students.infrastructure.RegisterStudentHandler::handleRequest")
                 .memorySize(512)
                 .timeout(Duration.seconds(15))
-                .tracing(Tracing.ACTIVE) // Habilita Observabilidad con X-Ray [6]            
+                .tracing(Tracing.ACTIVE) 
             .environment(Map.of(
                 "TABLE_NAME", table.getTableName()
             ))
@@ -65,7 +65,7 @@ public class StudentsApiConstruct extends Construct {
             .handler("com.jopagima.school.students.infrastructure.RequestStudentPhotoUploadHandler::handleRequest")
                 .memorySize(512)
                 .timeout(Duration.seconds(15))
-                .tracing(Tracing.ACTIVE) // Habilita Observabilidad con X-Ray [6]            
+                .tracing(Tracing.ACTIVE) 
             .environment(Map.of(
                 "PHOTO_BUCKET_NAME",  bucket.getBucketName()
             ))
