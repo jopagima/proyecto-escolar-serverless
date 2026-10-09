@@ -72,6 +72,8 @@ public class StudentsApiConstructTest {
         assertTrue(policies.contains("s3:PutObject"));
         assertFalse(policies.contains("s3:GetObject"));
         assertFalse(policies.contains("s3:DeleteObject"));
+        assertTrue(policies.contains("students/*"));
+        assertFalse(policies.contains("\"/*\""));
     }    
 
 }
