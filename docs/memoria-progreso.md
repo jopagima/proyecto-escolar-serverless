@@ -8,7 +8,7 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 2 (Cursos)
-Día: 7 (casi cerrado — S3 presigned: código y cableado de CDK hechos; falta desplegar y la petición real)
+Día: 7 (cerrado, verificado en producción) — pendiente Día 8 (Cognito)
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -219,6 +219,19 @@ Día: 7 (casi cerrado — S3 presigned: código y cableado de CDK hechos; falta 
   `grantReadWrite` en vez de un permiso solo de escritura; ambas se corrigieron antes de
   comitear. La Lambda de registro ya tiene `Tracing.ACTIVE` (X-Ray), adelantando parte
   del Día 9; la nueva lo copia.
+  **Verificado en producción (10-10-2026, tras `git push` y `Deploy` en verde)** contra
+  la API `n3p81ul131` (la misma URL de la Fase 1; el push no la cambió): (1) `GET
+  /students/<uuid>/photo-upload-url` devuelve **200** con `uploadUrl` apuntando al bucket
+  `deploy-studentsstack-studentsphotobucket2a1a3135-kgy2ckrbchw7` y la clave
+  `students/<uuid>/photo`, firma de 10 minutos; (2) `PUT` del fichero a esa URL devuelve
+  **200** directamente de S3 (cabeceras `x-amz-request-id`; cifrado `AES256` por
+  defecto, por lo que no hacen falta permisos de KMS) — esto es lo que prueba que el
+  permiso `s3:PutObject` sobre `students/*` funciona, porque el `GET` firma sin comprobar
+  permisos; (3) id mal formado (`/students/abc/...`) devuelve **422** con
+  `{"error":"Invalid UUID format."}`. **Día 7 cerrado.**
+  Mejora detectada, sin hacer: las respuestas JSON salen con `Content-Type:
+  text/plain`; los handlers deberían fijar `application/json` (con su test), también
+  `RegisterStudentHandler`.
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
@@ -405,13 +418,25 @@ Día: 7 (casi cerrado — S3 presigned: código y cableado de CDK hechos; falta 
   fichero es ruido de Surefire 2.22 en Windows 11. Con VS Code cerrado, el mismo
   `mvn clean install` pasó (5 módulos). No es un fallo del proyecto: no tocar código ni
   `pom.xml` ante este síntoma; diagnóstico por el `.dump`, no por la consola.
+- Verificación desde PowerShell en Windows (Fase 2 Día 7): `curl` es un alias de
+  `Invoke-WebRequest` y no acepta `-i` (queda esperando el parámetro `Uri`); usar
+  `curl.exe`. Una ventana abierta en `C:\WINDOWS\System32` no permite crear ficheros: el
+  `PUT` falló solo porque `prueba.txt` no existía, antes de llegar a S3 — trabajar desde
+  la carpeta de usuario. Para leer la respuesta JSON del handler (llega como
+  `text/plain`) usar `Invoke-WebRequest` y `ConvertFrom-Json`, no `Invoke-RestMethod`. En
+  este equipo no está instalado el CLI de CDK, y no hace falta: el pipeline ejecuta su
+  propio `cdk synth`.
+- Un `GET` que devuelve una URL firmada de S3 no prueba el permiso del bucket: firmar no
+  llama a S3. El permiso solo se ejerce al hacer el `PUT`; esa es la comprobación que
+  cierra el día.
 
 ## Servicios AWS de la hoja de ruta original ya acoplados
 - DynamoDB — Fase 1, Día 1.
 - AWS Lambda — Fase 1, Día 3.
 - Amazon API Gateway (HTTP API) — Fase 1, Día 3.
 - AWS CodePipeline + AWS CodeBuild — Fase 1, Día 4, operativo y verificado.
-- (Cognito y S3 presigned: aún no implementados, pendientes)
+- Amazon S3 (URL prefirmada de subida) — Fase 2, Día 7, operativo y verificado.
+- (Cognito: aún no implementado, es el Día 8)
 
 ## Pendiente / próximo día
 **Fase 2, Día 5 — cerrado** (Skill definida, `courses-service` migrado, bug del
@@ -447,27 +472,34 @@ diario ("Hecho hasta ahora") y las dos decisiones que quedan ahí documentadas
   se documenta como limitación conocida y aceptada, sin migración de datos. Si llegan a
   estorbar, se borran de la tabla a mano.
 
-**Fase 2, Día 7 (casi cerrado) — S3 presigned URL (foto de alumno)**: el código de
-`students-service` (18 tests) y el cableado de `infra/` (9 tests) están hechos y en
-verde: `PhotoUploadFunction` con `PHOTO_BUCKET_NAME`, ruta `GET /students/{studentId}/
-photo-upload-url`, `StudentsStack` con el bucket, y política con solo `s3:PutObject`
-(excepción documentada a `grant*`; test `grantsOnlyWriteAccessToPhotosBucket`).
-Pendiente para cerrar: (1) commit de limpieza de comentarios en `StudentsApiConstruct`
-(el de X-Ray `[6]`, duplicado y en español, y el bloque `Resolve the jar path...`
-suelto); (2) `cdk synth` y revisar los `*.template.json` (debe aparecer `s3:PutObject`
-sobre el bucket y ningún `s3:*`); (3) `mvn clean install` con VS Code cerrado en
-Windows, `git push`, esperar `Deploy`; (4) petición real: `GET` con un UUID da 200 con
-`uploadUrl`, `PUT` del fichero a esa URL, objeto visible en
-`s3://<bucket>/students/<uuid>/photo`, e id mal formado da 422. **El día no se cierra
-hasta que esa petición real funcione.** Sin decidir: acotar el recurso de la política a
-`bucket.arnForObjects("students/*")` en lugar de todo el bucket (recomendado; el test
-actual no lo comprueba). Mejoras opcionales anotadas: test
-`returns400WhenPathParametersAreNull`, test `failsFromNullIdentifier` en `commons`, y
-actualizar el Javadoc de `StudentsStack` (no menciona el bucket).
-**Limitación conocida**: el endpoint firma una URL para cualquier UUID válido, exista o
-no ese alumno (el `UseCase` no consulta `StudentRepository`); sin autenticación, podría
-dejar objetos huérfanos en el bucket. La autenticación del Día 8 (Cognito) cubre una
-parte; comprobar la existencia del alumno queda para más adelante.
+**Fase 2, Día 7 — cerrado y verificado en producción (10-10-2026)** — S3 presigned URL
+(foto de alumno). `students-service` (18 tests) e `infra` (9 tests) en verde; desplegado
+por el pipeline y comprobado con `GET` 200, `PUT` 200 directo a S3 y 422 con id mal
+formado (detalle en "Hecho hasta ahora"). Revisado antes del push el `git diff
+origin/main -- infra/`: solo el cableado del Día 7, sin tocar la tabla ni la ruta
+`POST /students`; el permiso quedó acotado a `bucket.arnForObjects("students/*")`.
+
+**Pendientes que deja el Día 7 (ninguno bloquea el Día 8):**
+- **Refactor de `StudentsApiConstruct`** (constructor de ~55 líneas, dos Lambdas con
+  configuración repetida): extraer métodos privados (`studentsFunction`, creación de cada
+  Lambda, permiso y rutas) en un commit aparte con los tests en verde. **Mantener `this`
+  como scope y los mismos ids de construct**: cambiarlos, o mover recursos a un construct
+  hijo, altera los identificadores lógicos de CloudFormation y, con `functionName` fijo,
+  el despliegue fallaría con "ya existe". Los tests no detectan ese cambio; red de
+  seguridad: un test temporal que imprima `findResources(...).keySet()` de
+  `AWS::Lambda::Function`, `AWS::ApiGatewayV2::Route` y `AWS::IAM::Policy` antes y
+  después, que debe salir idéntico. Tras el push, el stack no debería mostrar cambios de
+  recursos. Extraer el localizador del jar solo cuando `courses-service` tenga Lambda.
+  Comprobar si `getRegisterStudentFunction()` lo usa alguien; si no, eliminarlo.
+- **`Content-Type: application/json`** en las respuestas de los handlers (hoy salen como
+  `text/plain`), con su test, en `RegisterStudentHandler` y `RequestStudentPhotoUploadHandler`.
+- Opcionales: test `returns400WhenPathParametersAreNull`, test `failsFromNullIdentifier`
+  en `commons`, y actualizar el Javadoc de `StudentsStack` (no menciona el bucket).
+- **Limitación conocida**: el endpoint firma una URL para cualquier UUID válido, exista o
+  no ese alumno (el `UseCase` no consulta `StudentRepository`); sin autenticación,
+  podría dejar objetos huérfanos en el bucket. La autenticación del Día 8 (Cognito) cubre
+  una parte; comprobar la existencia del alumno queda para más adelante. Tampoco hay
+  CORS en el bucket ni en la API: hará falta al construir el frontend (Fase 6).
 
 **Fase 2, Día 8 — Cognito (grupos de roles)**: separado de S3 en un día propio
 (reordenamiento confirmado por José). Pendiente desde la Fase 1. El curso de
