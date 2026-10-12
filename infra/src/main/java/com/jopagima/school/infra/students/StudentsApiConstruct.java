@@ -37,61 +37,61 @@ public class StudentsApiConstruct extends Construct {
     public StudentsApiConstruct(Construct scope, String id, Table table, Bucket bucket) {
         super(scope, id);
 
-
-        // Resolve the jar path relative to the repository root (the parent of the
-        // "infra" module directory), regardless of which working directory the
-        // CDK CLI / Maven process was launched from.
-
-
-        this.registerStudentFunction = Function.Builder.create(this, "RegisterStudentFunction")
-            .runtime(Runtime.JAVA_17)
-            .functionName("RegisterStudentFunction")
-             .code(Code.fromAsset(resolveStudentsServiceJarPath()))
-            .handler("com.jopagima.school.students.infrastructure.RegisterStudentHandler::handleRequest")
-                .memorySize(512)
-                .timeout(Duration.seconds(15))
-                .tracing(Tracing.ACTIVE) 
-            .environment(Map.of(
-                "TABLE_NAME", table.getTableName()
-            ))
-            .build();
+        this.registerStudentFunction = createFunction(
+                "RegisterStudentFunction",
+                "RegisterStudentHandler",
+                Map.of("TABLE_NAME", table.getTableName()));
         table.grantWriteData(this.registerStudentFunction);
 
+        this.photoUploadFunction = createFunction(
+                "PhotoUploadFunction",
+                "RequestStudentPhotoUploadHandler",
+                Map.of("PHOTO_BUCKET_NAME", bucket.getBucketName()));
 
-        this.photoUploadFunction = Function.Builder.create(this, "PhotoUploadFunction")
-            .runtime(Runtime.JAVA_17)
-            .functionName("PhotoUploadFunction")
-             .code(Code.fromAsset(resolveStudentsServiceJarPath()))
-            .handler("com.jopagima.school.students.infrastructure.RequestStudentPhotoUploadHandler::handleRequest")
-                .memorySize(512)
-                .timeout(Duration.seconds(15))
-                .tracing(Tracing.ACTIVE) 
-            .environment(Map.of(
-                "PHOTO_BUCKET_NAME",  bucket.getBucketName()
-            ))
-            .build();
-
+        String studentsPhotosPrefix = "students/*";
         this.photoUploadFunction.addToRolePolicy(PolicyStatement.Builder.create()
             .effect(Effect.ALLOW)
             .actions(List.of("s3:PutObject"))
-            .resources(List.of(bucket.arnForObjects("students/*")))
+            .resources(List.of(bucket.arnForObjects(studentsPhotosPrefix)))
             .build());
 
         HttpApi httpApi = HttpApi.Builder.create(this, "StudentsHttpApi").build();
+        addRoute(httpApi, "/students", HttpMethod.POST,
+                "RegisterStudentIntegration", registerStudentFunction);
+        addRoute(httpApi, "/students/{studentId}/photo-upload-url", HttpMethod.GET,
+                "PhotoUploadIntegration", photoUploadFunction);
+    }
 
-        AddRoutesOptions registerRoute = AddRoutesOptions.builder()
-           .path("/students")
-           .methods(java.util.List.of(HttpMethod.POST))
-           .integration(new HttpLambdaIntegration("RegisterStudentIntegration", registerStudentFunction))
-           .build();
+    /**
+     * Every students-service Lambda shares runtime, sizing, tracing and the same jar;
+     * only its name, handler class and environment differ. The construct id is reused
+     * as the physical function name, so both stay aligned.
+     */
+    private Function createFunction(String name, String handlerClassName, Map<String, String> environment) {
+        String handlerPackage = "com.jopagima.school.students.infrastructure";
+        String handlerMethod = "handleRequest";
+        int memorySizeMb = 512;
+        int timeoutSeconds = 15;
 
-        AddRoutesOptions photoUploadRoute = AddRoutesOptions.builder()
-           .path("/students/{studentId}/photo-upload-url")
-           .methods(java.util.List.of(HttpMethod.GET))
-           .integration(new HttpLambdaIntegration("PhotoUploadIntegration", photoUploadFunction))
-           .build();
-        httpApi.addRoutes(registerRoute);        
-        httpApi.addRoutes(photoUploadRoute);
+        return Function.Builder.create(this, name)
+            .runtime(Runtime.JAVA_17)
+            .functionName(name)
+            .code(Code.fromAsset(resolveStudentsServiceJarPath()))
+            .handler(handlerPackage + "." + handlerClassName + "::" + handlerMethod)
+            .memorySize(memorySizeMb)
+            .timeout(Duration.seconds(timeoutSeconds))
+            .tracing(Tracing.ACTIVE)
+            .environment(environment)
+            .build();
+    }
+
+    private static void addRoute(HttpApi httpApi, String path, HttpMethod method,
+                                 String integrationId, Function function) {
+        httpApi.addRoutes(AddRoutesOptions.builder()
+            .path(path)
+            .methods(List.of(method))
+            .integration(new HttpLambdaIntegration(integrationId, function))
+            .build());
     }
 
     /**
@@ -112,6 +112,6 @@ public class StudentsApiConstruct extends Construct {
                 "Cannot locate students-service jar from working directory "
                         + new File("").getAbsolutePath()
                         + ". Run `mvn clean package` first.");
-    }    
+    }
 
 }
