@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import software.amazon.awscdk.Stack;
+import software.amazon.awscdk.assertions.Match;
 import software.amazon.awscdk.assertions.Template;
 
 public class StudentsUserPoolConstructTest {
@@ -34,7 +35,16 @@ public class StudentsUserPoolConstructTest {
             template.hasResourceProperties("AWS::Cognito::UserPoolGroup",
                     Map.of("GroupName", groupName));
         }
-    }    
+    }
+    @Test
+    void createsClientAllowingPasswordAuthForTesting() {
+        template.hasResourceProperties("AWS::Cognito::UserPoolClient", Map.of(
+                "ExplicitAuthFlows", Match.arrayWith(List.of("ALLOW_USER_PASSWORD_AUTH"))
+        ));
+    }        
     
-
+    @Test
+    void createsOnlyOneUserPoolClient() {
+        template.resourceCountIs("AWS::Cognito::UserPoolClient", 1);
+    }
 }
