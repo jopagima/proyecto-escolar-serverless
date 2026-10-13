@@ -26,6 +26,15 @@ public class StudentsUserPoolConstructTest {
             "UsernameAttributes", List.of("email"),
             "AdminCreateUserConfig", Map.of("AllowAdminCreateUserOnly", true)));
     }
+
+    @Test
+    void createsStudentTeacherAndAdminGroups() {
+        template.resourceCountIs("AWS::Cognito::UserPoolGroup", 3);
+        for (String groupName : List.of("student", "teacher", "admin")) {
+            template.hasResourceProperties("AWS::Cognito::UserPoolGroup",
+                    Map.of("GroupName", groupName));
+        }
+    }    
     
 
 }
