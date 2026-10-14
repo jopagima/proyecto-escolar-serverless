@@ -19,5 +19,9 @@ public class CallerGroupsTest {
         assertTrue(callerGroups.hasAnyOf("teacher"));
     }
     
- 
+    @Test
+    void readsASingleGroup() {
+        CallerGroups callerGroups = CallerGroups.parse("[student]");
+        assertTrue(callerGroups.hasAnyOf("student"));
+    }    
 }
