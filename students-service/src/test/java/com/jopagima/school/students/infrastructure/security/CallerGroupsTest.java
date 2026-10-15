@@ -44,5 +44,10 @@ public class CallerGroupsTest {
     @Test
     void toleratesExtraSpacesAndRepeatedGroups() {
         assertTrue(CallerGroups.parse("[teacher  admin  teacher  admin]").hasAnyOf("teacher"));
-    }    
+    } 
+    
+    @Test
+    void doesNotMatchPartialGroupNames() {
+        assertFalse(CallerGroups.parse("[superadmin]").hasAnyOf("admin"));
+    }       
 }
