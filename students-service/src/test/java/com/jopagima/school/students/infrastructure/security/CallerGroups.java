@@ -16,7 +16,10 @@ public class CallerGroups {
         if (claimValue == null || claimValue.isEmpty()) {
             return new CallerGroups(Set.of());
         }
-        
+        if (!claimValue.startsWith("[") || !claimValue.endsWith("]")) {
+            return new CallerGroups(Set.of());
+        }
+
         String[] groups = claimValue.substring(1, claimValue.length() - 1).split(" ");
         return new CallerGroups(Set.of(groups));
     }

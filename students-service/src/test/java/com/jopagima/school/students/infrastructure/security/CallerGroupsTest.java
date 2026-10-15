@@ -24,7 +24,12 @@ public class CallerGroupsTest {
     void readsASingleGroup() {
         CallerGroups callerGroups = CallerGroups.parse("[student]");
         assertTrue(callerGroups.hasAnyOf("student"));
-    }    
+    }
+    
+    @Test
+    void deniesWhenTheClaimHasNoBrackets() {
+        assertFalse(CallerGroups.parse("xadminx").hasAnyOf("admin"));
+    }
 
     @Test
     void deniesWhenTheClaimIsMissing() {
