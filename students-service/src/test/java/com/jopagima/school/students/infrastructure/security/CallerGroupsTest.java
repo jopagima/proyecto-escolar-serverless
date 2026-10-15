@@ -32,6 +32,11 @@ public class CallerGroupsTest {
     }
 
     @Test
+    void createsNoGroupsFromEmptyBrackets() {
+        assertFalse(CallerGroups.parse("[]").hasAnyOf(""));
+    }    
+
+    @Test
     void deniesWhenTheClaimIsMissing() {
         assertFalse(CallerGroups.parse(null).hasAnyOf("teacher", "admin"));
     }

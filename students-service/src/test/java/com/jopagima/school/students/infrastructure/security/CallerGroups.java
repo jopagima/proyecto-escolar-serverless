@@ -1,6 +1,8 @@
 package com.jopagima.school.students.infrastructure.security;
 
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * CallerGroups
@@ -20,8 +22,11 @@ public class CallerGroups {
             return new CallerGroups(Set.of());
         }
 
-        String[] groups = claimValue.substring(1, claimValue.length() - 1).split(" ");
-        return new CallerGroups(Set.of(groups));
+        String inner = claimValue.substring(1, claimValue.length() - 1);
+        Set<String> groups = Arrays.stream(inner.split("\\s+"))
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toUnmodifiableSet());
+        return new CallerGroups(groups);
     }
 
     public boolean hasAnyOf(String... allowedGroups) {
