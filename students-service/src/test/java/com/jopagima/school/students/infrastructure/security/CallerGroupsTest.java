@@ -67,5 +67,10 @@ public class CallerGroupsTest {
         event.setRequestContext(context);
 
         assertTrue(CallerGroups.from(event).hasAnyOf("teacher"));
-    }      
+    }    
+    
+    @Test
+    void deniesWhenTheEventHasNoIdentity() {
+        assertFalse(CallerGroups.from(new APIGatewayV2HTTPEvent()).hasAnyOf("teacher", "admin"));
+    }
 }
