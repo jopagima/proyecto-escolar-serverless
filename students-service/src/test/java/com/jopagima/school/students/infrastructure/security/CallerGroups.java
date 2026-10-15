@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
+
 /**
  * CallerGroups
  */
@@ -36,6 +38,13 @@ public class CallerGroups {
             }
         }
         return false;
+    }
+
+    public static CallerGroups from(APIGatewayV2HTTPEvent event) {
+        var claims = event.getRequestContext().getAuthorizer().getJwt().getClaims();
+        String groupsClaim = "cognito:groups";
+        String groupsClaimFromJwt = claims.get(groupsClaim);
+        return parse(groupsClaimFromJwt);
     }
 
 }
