@@ -1,6 +1,7 @@
 package com.jopagima.school.students.infrastructure.security;
 
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -10,6 +11,7 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
  * CallerGroups
  */
 public class CallerGroups {
+    private final static String GROUPS_CLAIM = "cognito:groups";
     private final Set<String> groups;
 
     private CallerGroups(Set<String> groups) {
@@ -41,9 +43,12 @@ public class CallerGroups {
     }
 
     public static CallerGroups from(APIGatewayV2HTTPEvent event) {
-        var claims = event.getRequestContext().getAuthorizer().getJwt().getClaims();
-        String groupsClaim = "cognito:groups";
-        String groupsClaimFromJwt = claims.get(groupsClaim);
+        String groupsClaimFromJwt = Optional.ofNullable(event.getRequestContext())
+            .map(ctx -> ctx.getAuthorizer())
+            .map(authorizer -> authorizer.getJwt())
+            .map(jwt -> jwt.getClaims())
+            .map(claims -> claims.get(GROUPS_CLAIM))
+            .orElse("");
         return parse(groupsClaimFromJwt);
     }
 
