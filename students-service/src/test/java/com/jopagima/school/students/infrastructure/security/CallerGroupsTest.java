@@ -40,4 +40,9 @@ public class CallerGroupsTest {
     void deniesWhenTheClaimIsMissing() {
         assertFalse(CallerGroups.parse(null).hasAnyOf("teacher", "admin"));
     }
+
+    @Test
+    void toleratesExtraSpacesAndRepeatedGroups() {
+        assertTrue(CallerGroups.parse("[teacher  admin  teacher  admin]").hasAnyOf("teacher"));
+    }    
 }
