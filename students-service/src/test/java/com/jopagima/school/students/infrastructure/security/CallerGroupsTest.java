@@ -1,5 +1,6 @@
 package com.jopagima.school.students.infrastructure.security;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -24,4 +25,9 @@ public class CallerGroupsTest {
         CallerGroups callerGroups = CallerGroups.parse("[student]");
         assertTrue(callerGroups.hasAnyOf("student"));
     }    
+
+    @Test
+    void deniesWhenTheClaimIsMissing() {
+        assertFalse(CallerGroups.parse(null).hasAnyOf("teacher", "admin"));
+    }
 }

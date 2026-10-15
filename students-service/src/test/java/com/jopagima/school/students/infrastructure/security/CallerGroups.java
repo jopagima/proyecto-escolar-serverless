@@ -13,12 +13,21 @@ public class CallerGroups {
     }
 
 	public static CallerGroups parse(String claimValue) {
+        if (claimValue == null || claimValue.isEmpty()) {
+            return new CallerGroups(Set.of());
+        }
+        
         String[] groups = claimValue.substring(1, claimValue.length() - 1).split(" ");
         return new CallerGroups(Set.of(groups));
     }
 
-    public boolean hasAnyOf(String group) {
-        return groups.contains(group);
+    public boolean hasAnyOf(String... allowedGroups) {
+        for (String group : allowedGroups) {
+            if (groups.contains(group)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }
