@@ -81,5 +81,15 @@ public class RequestStudentPhotoUploadHandlerTest {
         event.setPathParameters(Map.of("studentId", Id.generateUniqueIdentifier().toString()));
 
         assertEquals(403, handler.handleRequest(event, null).getStatusCode());
+    }  
+    
+    @Test
+    void returns403WhenCallerBelongsToAnUnknownGroup() {
+        RequestStudentPhotoUploadHandler handler = new RequestStudentPhotoUploadHandler(
+                new RequestStudentPhotoUploadUseCase(objectKey -> "unused"));
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[parent]");
+        event.setPathParameters(Map.of("studentId", Id.generateUniqueIdentifier().toString()));
+
+        assertEquals(403, handler.handleRequest(event, null).getStatusCode());
     }    
 }
