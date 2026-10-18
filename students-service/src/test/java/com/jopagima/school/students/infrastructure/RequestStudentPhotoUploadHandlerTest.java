@@ -25,7 +25,8 @@ public class RequestStudentPhotoUploadHandlerTest {
     RequestStudentPhotoUploadHandler handler = new RequestStudentPhotoUploadHandler(useCase);
 
     Id studentId = Id.generateUniqueIdentifier();
-    APIGatewayV2HTTPEvent event = new APIGatewayV2HTTPEvent();
+    
+    APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[teacher]");
     event.setPathParameters(Map.of("studentId", studentId.toString()));
     APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);
     assertEquals(200, response.getStatusCode());
@@ -40,7 +41,7 @@ public class RequestStudentPhotoUploadHandlerTest {
 
 
     
-        APIGatewayV2HTTPEvent event = new APIGatewayV2HTTPEvent();
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[teacher]");
         event.setPathParameters(Map.of());
         APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);
 
@@ -54,11 +55,21 @@ public class RequestStudentPhotoUploadHandlerTest {
                 new RequestStudentPhotoUploadHandler(new RequestStudentPhotoUploadUseCase(fakePort));
 
 
-    
-        APIGatewayV2HTTPEvent event = new APIGatewayV2HTTPEvent();
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[teacher]");
+
         event.setPathParameters(Map.of("studentId", "not-a-uuid"));
         APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);
 
         assertEquals(422, response.getStatusCode());
-    }      
+    } 
+    
+    @Test
+    void returns403WhenCallerIsAStudent() {
+        RequestStudentPhotoUploadHandler handler = new RequestStudentPhotoUploadHandler(
+                new RequestStudentPhotoUploadUseCase(objectKey -> "unused"));
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[student]");
+        event.setPathParameters(Map.of("studentId", Id.generateUniqueIdentifier().toString()));
+
+        assertEquals(403, handler.handleRequest(event, null).getStatusCode());
+    }    
 }
