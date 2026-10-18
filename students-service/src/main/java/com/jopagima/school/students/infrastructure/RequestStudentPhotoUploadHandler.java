@@ -1,8 +1,6 @@
 package com.jopagima.school.students.infrastructure;
 
 import java.util.Map;
-import java.util.Optional;
-
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
@@ -15,10 +13,8 @@ import com.jopagima.school.students.infrastructure.factory.StudentsServiceFactor
 import com.jopagima.school.students.infrastructure.security.CallerGroups;
 
 public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
-    private final static String GROUPS_CLAIM = "cognito:groups";
     private final RequestStudentPhotoUploadUseCase useCase;
     private final ObjectMapper objectMapper = new ObjectMapper();
-
     public RequestStudentPhotoUploadHandler() {
         this.useCase = StudentsServiceFactory.createRequestStudentPhotoUploadUseCase();
         
@@ -34,12 +30,10 @@ public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatew
         if (!groupsFromJwt.hasAnyOf("teacher", "admin") ) {
             return response(403, Map.of("error", "Only teachers and admins are allowed to request photo upload URLs"));
         }
-
         String studentIdFromPath = input.getPathParameters().get("studentId");
         if(studentIdFromPath == null || studentIdFromPath.isEmpty()) {
             return response(400, Map.of("error", "Missing student ID in path parameters"));
         }
-
         try {
             String uploadUrl = useCase.execute(studentIdFromPath);
             return response(200, Map.of("uploadUrl", uploadUrl));
@@ -47,9 +41,6 @@ public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatew
             return response(422, Map.of("error", e.getMessage()));
         }
     }
-
-
-  
 
     private APIGatewayV2HTTPResponse response(int statusCode, Map<String, String> body) {
         try {
