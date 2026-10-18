@@ -92,4 +92,14 @@ public class RequestStudentPhotoUploadHandlerTest {
 
         assertEquals(403, handler.handleRequest(event, null).getStatusCode());
     }    
+
+    @Test
+    void returnsUploadUrlWhenCallerIsAdmin() {
+        RequestStudentPhotoUploadHandler handler = new RequestStudentPhotoUploadHandler(
+                new RequestStudentPhotoUploadUseCase(objectKey -> "https://fake-bucket/" + objectKey));
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[admin]");
+        event.setPathParameters(Map.of("studentId", Id.generateUniqueIdentifier().toString()));
+
+        assertEquals(200, handler.handleRequest(event, null).getStatusCode());
+    }    
 }
