@@ -71,5 +71,15 @@ public class RequestStudentPhotoUploadHandlerTest {
         event.setPathParameters(Map.of("studentId", Id.generateUniqueIdentifier().toString()));
 
         assertEquals(403, handler.handleRequest(event, null).getStatusCode());
+    }  
+    
+    @Test
+    void returns403WhenThereIsNoIdentity() {
+        RequestStudentPhotoUploadHandler handler = new RequestStudentPhotoUploadHandler(
+                new RequestStudentPhotoUploadUseCase(objectKey -> "unused"));
+        APIGatewayV2HTTPEvent event = new APIGatewayV2HTTPEvent();
+        event.setPathParameters(Map.of("studentId", Id.generateUniqueIdentifier().toString()));
+
+        assertEquals(403, handler.handleRequest(event, null).getStatusCode());
     }    
 }
