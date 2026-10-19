@@ -106,6 +106,14 @@ public class RegisterStudentHandlerTest {
         event.setBody("");
 
         assertEquals(403, handler.handleRequest(event, null).getStatusCode());
+    }   
+    
+    @Test
+    void returns403WhenThereIsNoIdentity() {
+        APIGatewayV2HTTPEvent event = new APIGatewayV2HTTPEvent();
+        event.setBody("{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
+
+        assertEquals(403, handler.handleRequest(event, null).getStatusCode());
     }    
 
     private APIGatewayV2HTTPEvent eventWithBody(String body) {
