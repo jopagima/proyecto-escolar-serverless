@@ -128,6 +128,14 @@ public class RegisterStudentHandlerTest {
         event.setBody("{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
 
         assertEquals(201, handler.handleRequest(event, null).getStatusCode());
+    }  
+    
+    @Test
+    void returns403WhenCallerBelongsToAnUnknownGroup() {
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[parent]");
+        event.setBody("{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
+
+        assertEquals(403, handler.handleRequest(event, null).getStatusCode());
     }    
 
     private APIGatewayV2HTTPEvent eventWithBody(String body) {
