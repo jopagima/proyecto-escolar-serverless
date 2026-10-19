@@ -98,7 +98,15 @@ public class RegisterStudentHandlerTest {
         event.setBody("{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
 
         assertEquals(403, handler.handleRequest(event, null).getStatusCode());
-    }       
+    } 
+    
+    @Test
+    void returns403BeforeCheckingTheBody() {
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[student]");
+        event.setBody("");
+
+        assertEquals(403, handler.handleRequest(event, null).getStatusCode());
+    }    
 
     private APIGatewayV2HTTPEvent eventWithBody(String body) {
         APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[teacher]");
