@@ -12,6 +12,7 @@ import com.jopagima.school.commons.domain.ErrorType;
 import com.jopagima.school.commons.domain.ValidationError;
 import com.jopagima.school.students.application.RegisterStudentUseCase;
 import com.jopagima.school.students.infrastructure.factory.StudentsServiceFactory;
+import com.jopagima.school.students.infrastructure.security.CallerGroups;
 
 /**
  * Entry-point adapter: translates the HTTP proxy event into a call to
@@ -32,12 +33,13 @@ public class RegisterStudentHandler implements RequestHandler<APIGatewayV2HTTPEv
 
     @Override
     public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent input, Context context) {
-
-
+        CallerGroups groupsFromJwt = CallerGroups.from(input);
+        if (!groupsFromJwt.hasAnyOf("teacher", "admin") ) {
+            return buildResponse(403,  "Only teachers and admins are allowed to register students");
+        }
         if (input == null || input.getBody() == null || input.getBody().isBlank()) {
             return buildResponse(400, "Malformed request body");
         }
-
         try {
             RegisterStudentRequest request = objectMapper.readValue(input.getBody(), RegisterStudentRequest.class);
             String studentId = registerStudentUseCase.execute(
