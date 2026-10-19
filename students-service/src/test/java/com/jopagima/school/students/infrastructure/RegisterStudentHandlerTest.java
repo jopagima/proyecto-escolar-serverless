@@ -15,7 +15,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.amazonaws.services.lambda.runtime.events.APIGatewayV2CustomAuthorizerEvent;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jopagima.school.commons.domain.DomainError;
@@ -44,6 +43,7 @@ public class RegisterStudentHandlerTest {
     @Test
     void answersCreatedWithGeneratedIdWhenStudentIsRegistered() throws Exception {
         APIGatewayV2HTTPEvent event = eventWithBody("{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
+        
         // Implement the test logic here
         APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);
         assertEquals(201, response.getStatusCode());    
@@ -95,7 +95,7 @@ public class RegisterStudentHandlerTest {
        
 
     private APIGatewayV2HTTPEvent eventWithBody(String body) {
-        APIGatewayV2HTTPEvent event = new APIGatewayV2HTTPEvent();
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[teacher]");
         event.setBody(body);
         return event;
     }
