@@ -120,6 +120,14 @@ public class RegisterStudentHandlerTest {
     void returns400WhenBodyIsMissing() {
         APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[teacher]");
         assertEquals(400, handler.handleRequest(event, null).getStatusCode());
+    }  
+    
+    @Test
+    void registersStudentWhenCallerIsAdmin() {
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[admin]");
+        event.setBody("{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
+
+        assertEquals(201, handler.handleRequest(event, null).getStatusCode());
     }    
 
     private APIGatewayV2HTTPEvent eventWithBody(String body) {
