@@ -37,7 +37,7 @@ public class RegisterStudentHandler implements RequestHandler<APIGatewayV2HTTPEv
         if (!groupsFromJwt.hasAnyOf("teacher", "admin") ) {
             return buildResponse(403,  "Only teachers and admins are allowed to register students");
         }
-        if (input == null || input.getBody() == null || input.getBody().isBlank()) {
+        if (input.getBody() == null || input.getBody().isBlank()) {
             return buildResponse(400, "Malformed request body");
         }
         try {
