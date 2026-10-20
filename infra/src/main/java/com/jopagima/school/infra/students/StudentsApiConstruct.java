@@ -5,6 +5,7 @@ import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.services.apigatewayv2.AddRoutesOptions;
 import software.amazon.awscdk.services.apigatewayv2.HttpApi;
 import software.amazon.awscdk.services.apigatewayv2.HttpMethod;
+import software.amazon.awscdk.services.apigatewayv2.IHttpRouteAuthorizer;
 import software.amazon.awscdk.aws_apigatewayv2_integrations.HttpLambdaIntegration;
 import software.amazon.awscdk.services.dynamodb.Table;
 import software.amazon.awscdk.services.iam.Effect;
@@ -34,7 +35,7 @@ public class StudentsApiConstruct extends Construct {
         return registerStudentFunction;
     }
 
-    public StudentsApiConstruct(Construct scope, String id, Table table, Bucket bucket) {
+    public StudentsApiConstruct(Construct scope, String id, Table table, Bucket bucket, IHttpRouteAuthorizer autorizer) {
         super(scope, id);
 
         this.registerStudentFunction = createFunction(
@@ -57,9 +58,9 @@ public class StudentsApiConstruct extends Construct {
 
         HttpApi httpApi = HttpApi.Builder.create(this, "StudentsHttpApi").build();
         addRoute(httpApi, "/students", HttpMethod.POST,
-                "RegisterStudentIntegration", registerStudentFunction);
+                "RegisterStudentIntegration", registerStudentFunction, autorizer);
         addRoute(httpApi, "/students/{studentId}/photo-upload-url", HttpMethod.GET,
-                "PhotoUploadIntegration", photoUploadFunction);
+                "PhotoUploadIntegration", photoUploadFunction, autorizer);
     }
 
     /**
@@ -86,11 +87,12 @@ public class StudentsApiConstruct extends Construct {
     }
 
     private static void addRoute(HttpApi httpApi, String path, HttpMethod method,
-                                 String integrationId, Function function) {
+                                 String integrationId, Function function, IHttpRouteAuthorizer autorizer) {
         httpApi.addRoutes(AddRoutesOptions.builder()
             .path(path)
             .methods(List.of(method))
             .integration(new HttpLambdaIntegration(integrationId, function))
+            .authorizer(autorizer)
             .build());
     }
 

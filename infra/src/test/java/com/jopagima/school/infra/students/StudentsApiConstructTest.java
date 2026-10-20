@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import software.amazon.awscdk.Stack;
 import software.amazon.awscdk.assertions.Match;
 import software.amazon.awscdk.assertions.Template;
+import software.amazon.awscdk.services.apigatewayv2.IHttpRouteAuthorizer;
 import software.amazon.awscdk.services.dynamodb.Table;
 import software.amazon.awscdk.services.s3.Bucket;
 
@@ -26,7 +27,8 @@ public class StudentsApiConstructTest {
         Stack stack = new Stack();
         Table table = new StudentsTableConstruct(stack, "StudentsTable").getTable();
         Bucket bucket = new StudentsPhotoBucketConstruct(stack, "StudentsPhotoBucket").getBucket();
-        new StudentsApiConstruct(stack, "StudentsApi", table, bucket);
+        IHttpRouteAuthorizer autorizer = new StudentsUserPoolConstruct(stack, "StudentsUserPool").getAuthorizer();
+        new StudentsApiConstruct(stack, "StudentsApi", table, bucket, autorizer);
         template = Template.fromStack(stack);
     }
 
@@ -74,6 +76,15 @@ public class StudentsApiConstructTest {
         assertFalse(policies.contains("s3:DeleteObject"));
         assertTrue(policies.contains("students/*"));
         assertFalse(policies.contains("\"/*\""));
-    }    
+    } 
+
+    @Test
+    void protectsBothRoutesWithTheJwtAuthorizer() {
+        template.hasResourceProperties("AWS::ApiGatewayV2::Authorizer", Map.of("AuthorizerType", "JWT"));
+        template.hasResourceProperties("AWS::ApiGatewayV2::Route", Map.of(
+                "RouteKey", "POST /students", "AuthorizationType", "JWT"));
+        template.hasResourceProperties("AWS::ApiGatewayV2::Route", Map.of(
+                "RouteKey", "GET /students/{studentId}/photo-upload-url", "AuthorizationType", "JWT"));
+    }       
 
 }
