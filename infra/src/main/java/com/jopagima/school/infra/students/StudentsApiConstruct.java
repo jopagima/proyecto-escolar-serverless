@@ -35,7 +35,7 @@ public class StudentsApiConstruct extends Construct {
         return registerStudentFunction;
     }
 
-    public StudentsApiConstruct(Construct scope, String id, Table table, Bucket bucket, IHttpRouteAuthorizer autorizer) {
+    public StudentsApiConstruct(Construct scope, String id, Table table, Bucket bucket, IHttpRouteAuthorizer authorizer) {
         super(scope, id);
 
         this.registerStudentFunction = createFunction(
@@ -58,9 +58,9 @@ public class StudentsApiConstruct extends Construct {
 
         HttpApi httpApi = HttpApi.Builder.create(this, "StudentsHttpApi").build();
         addRoute(httpApi, "/students", HttpMethod.POST,
-                "RegisterStudentIntegration", registerStudentFunction, autorizer);
+                "RegisterStudentIntegration", registerStudentFunction, authorizer);
         addRoute(httpApi, "/students/{studentId}/photo-upload-url", HttpMethod.GET,
-                "PhotoUploadIntegration", photoUploadFunction, autorizer);
+                "PhotoUploadIntegration", photoUploadFunction, authorizer);
     }
 
     /**
