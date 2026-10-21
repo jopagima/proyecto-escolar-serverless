@@ -271,7 +271,10 @@ Día: 8 (cerrado, verificado en producción) — pendiente Día 9 (Observabilida
   CloudShell: sin token 401, token falso 401, alumno `GET` 403, profesor `GET` 200,
   alumno `POST` 403, profesor `POST` 201. El 200/201 del profesor confirma que el formato
   real del claim coincide con el asumido (`["teacher"]` con un solo grupo). **Día 8
-  cerrado.**
+  cerrado.** Datos de prueba limpiados: los usuarios del pool se eliminaron y el alumno
+  `Prueba Cognito` se borró de `StudentsTable` con el PK exacto devuelto por un `scan`
+  (el `delete-item` no da error aunque la clave no exista; un primer intento con el
+  marcador `<id del scan>` sin sustituir no borró nada).
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
@@ -537,13 +540,14 @@ pipeline y comprobado con las seis llamadas (401, 401, 403, 200, 403, 201). Deta
 "Hecho hasta ahora".
 
 **Pendientes que dejan los Días 7 y 8 (ninguno bloquea el Día 9):**
-- **Datos de prueba por limpiar**: los usuarios `profe@example.com` y `alumno@example.com`
-  del User Pool, y el alumno `Prueba Cognito` (`prueba.cognito@example.com`) creado por el
-  `POST` de la prueba, en `StudentsTable`.
 - **Varios grupos en un mismo usuario**: los tests unitarios asumen `[teacher admin]`
-  (separado por espacios) y la prueba real solo vio un grupo. Verificar con un usuario en
-  `teacher` y `admin`; si API Gateway lo entrega con comas, hay que ajustar `parse` y su
-  test.
+  (separado por espacios). Prueba real con un usuario en `teacher` y `student`: **200**,
+  que es evidencia débil, porque un 200 es compatible con una lista separada por comas
+  siempre que `teacher` no vaya primero (`parse` separa solo por espacios y vería
+  `teacher,`). No se conoce el orden en que llega el claim. El fallo posible es cerrado (un
+  403 a un usuario legítimo) y hoy nadie tiene más de un grupo. Para resolverlo del todo
+  hace falta ver el valor que recibe la Lambda con un log temporal o el orden de
+  `cognito:groups` en el token; si llega con comas, ajustar `parse` y su test.
 - **`USER_PASSWORD_AUTH`** envía la contraseña tal cual a Cognito (por TLS); aceptable para
   pruebas, pero el frontend de la Fase 6 debe usar SRP y cambiar el cliente.
 - **Propiedad del recurso**: sin vínculo entre usuario de Cognito y alumno, el grupo
