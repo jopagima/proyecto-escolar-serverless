@@ -8,7 +8,7 @@ Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
 Fase: 2 (Cursos)
-Día: 7 (cerrado, verificado en producción) — pendiente Día 8 (Cognito)
+Día: 8 (cerrado, verificado en producción) — pendiente Día 9 (Observabilidad)
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -232,6 +232,46 @@ Día: 7 (cerrado, verificado en producción) — pendiente Día 8 (Cognito)
   Mejora detectada, sin hacer: las respuestas JSON salen con `Content-Type:
   text/plain`; los handlers deberían fijar `application/json` (con su test), también
   `RegisterStudentHandler`.
+- Fase 2, Día 8 — **Autenticación y autorización con Cognito**. `StudentsUserPoolConstruct`
+  (CDK): User Pool donde solo un administrador crea usuarios (`selfSignUpEnabled(false)`,
+  inicio de sesión por email, recuperación solo por email), grupos `student`/`teacher`/
+  `admin` mediante `addGroup`, un único cliente de aplicación con `USER_PASSWORD_AUTH`
+  y sin secreto, el autorizador JWT (`HttpUserPoolAuthorizer`) y dos `CfnOutput`
+  (`UserPoolId`, `UserPoolClientId`). En el código se detectó y corrigió un cliente
+  duplicado (se creaba con `addClient` y de nuevo con el `Builder`, con el mismo id): el
+  test `hasResourceProperties` pasaba porque basta que *algún* recurso cumpla, y el campo
+  que usaba el autorizador apuntaba al cliente sin el flujo; lo detecta
+  `createsOnlyOneUserPoolClient`. `StudentsApiConstruct` recibe ahora el autorizador y lo
+  aplica a las dos rutas; `StudentsStack` crea el pool. Test
+  `protectsBothRoutesWithTheJwtAuthorizer`, con una aserción **por ruta**, comprobado
+  quitando el autorizador de una sola (`Expected JWT but received NONE`). `infra`: 14
+  tests; el `@BeforeEach` construye el construct con sus dependencias en un `Stack`
+  propio (opción B) y no el `StudentsStack` real, lo que elimina los avisos de
+  "Resources section must exist".
+  **`CallerGroups`** (`infrastructure/security`, 9 tests): lee el claim `cognito:groups`
+  del evento y lo analiza de forma estricta (corchetes obligatorios, separación por
+  espacios, nombres vacíos y repetidos tolerados, `Optional` en la cadena
+  `requestContext → authorizer → jwt → claims`). Todo lo no reconocido da «sin grupos».
+  **Handlers con lista de permitidos**: `RegisterStudentHandler` y
+  `RequestStudentPhotoUploadHandler` comprueban `!hasAnyOf("teacher", "admin")` lo
+  primero, antes de leer cuerpo o parámetros, y deniegan con 403; sin identidad o con un
+  grupo desconocido también. Un primer intento con lista de **prohibidos**
+  (`hasAnyOf("student")`) pasaba los tests y dejaba entrar a quien no tuviera identidad;
+  lo destapó que los tres tests antiguos del handler *no* se pusieron en rojo al añadir la
+  comprobación. Cada test de control de acceso se comprobó rompiendo el código a
+  propósito (lista de prohibidos, añadir `"parent"`, quitar `"admin"`, comentar la
+  guarda del cuerpo, que da `Errors: 1`). `students-service`: 37 tests.
+  **Cambio de contrato deliberado**: las llamadas sin token dan 401 (API Gateway) y con un
+  grupo no permitido, 403. Matriz: `POST /students` y `GET .../photo-upload-url` solo para
+  `teacher` y `admin`; el grupo `student` no puede nada hasta enlazar usuario y alumno.
+  **Verificado en producción (21-10-2026, tras `git push` y `Deploy` en verde)**: antes
+  del push se comparó el identificador lógico de las dos Lambdas y las dos rutas con los
+  de `Deploy-StudentsStack` (coincidieron; el refactor de `StudentsApiConstruct` con
+  `createFunction`/`addRoute` no cambió ninguna identidad). Con usuarios de prueba en
+  CloudShell: sin token 401, token falso 401, alumno `GET` 403, profesor `GET` 200,
+  alumno `POST` 403, profesor `POST` 201. El 200/201 del profesor confirma que el formato
+  real del claim coincide con el asumido (`["teacher"]` con un solo grupo). **Día 8
+  cerrado.**
 
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
@@ -312,6 +352,17 @@ Día: 7 (cerrado, verificado en producción) — pendiente Día 8 (Cognito)
   `hexagonal-retrofit` (añadido como paso 8 obligatorio en
   `.claude/skills/hexagonal-retrofit/SKILL.md`, Fase 2 Día 6) y, por extensión, a
   cualquier Skill futura que comitee en nombre del usuario.
+- **Autenticación y autorización**: Cognito (User Pool) autentica y API Gateway valida el
+  JWT antes de invocar la Lambda; **autorizar es decisión del handler**, que lee los
+  grupos con `CallerGroups`. Siempre con **lista de permitidos** y denegación por defecto
+  (sin identidad, grupo desconocido o claim mal formado = 403), comprobada lo primero.
+  Es un control de acceso grueso en infraestructura; las reglas finas (p. ej. «un alumno
+  solo sube su foto») pertenecerán a la capa de aplicación cuando exista el vínculo entre
+  usuario de Cognito y alumno. Cualquier test de control de acceso nuevo se comprueba
+  rompiendo el código a propósito.
+- **Cada test propuesto lleva su motivo** (decisión de José, Fase 2 Día 8): qué riesgo o
+  decisión protege, por qué falla (o pasa) en ese momento, y qué no cubre. No se
+  entregan tests sin esa explicación, ni se da por sabido para qué sirven.
 - **Patrón de reconstitución de entidades desde persistencia**: cuando una entidad
   tiene un factory method público con constructor privado (ej. `Course.create(...)`,
   que valida y genera `Id`), la reconstrucción desde el adaptador de persistencia usa
@@ -436,7 +487,7 @@ Día: 7 (cerrado, verificado en producción) — pendiente Día 8 (Cognito)
 - Amazon API Gateway (HTTP API) — Fase 1, Día 3.
 - AWS CodePipeline + AWS CodeBuild — Fase 1, Día 4, operativo y verificado.
 - Amazon S3 (URL prefirmada de subida) — Fase 2, Día 7, operativo y verificado.
-- (Cognito: aún no implementado, es el Día 8)
+- Amazon Cognito (User Pool, grupos, autorizador JWT) — Fase 2, Día 8, operativo y verificado.
 
 ## Pendiente / próximo día
 **Fase 2, Día 5 — cerrado** (Skill definida, `courses-service` migrado, bug del
@@ -479,36 +530,45 @@ formado (detalle en "Hecho hasta ahora"). Revisado antes del push el `git diff
 origin/main -- infra/`: solo el cableado del Día 7, sin tocar la tabla ni la ruta
 `POST /students`; el permiso quedó acotado a `bucket.arnForObjects("students/*")`.
 
-**Pendientes que deja el Día 7 (ninguno bloquea el Día 8):**
-- **Refactor de `StudentsApiConstruct`** (constructor de ~55 líneas, dos Lambdas con
-  configuración repetida): extraer métodos privados (`studentsFunction`, creación de cada
-  Lambda, permiso y rutas) en un commit aparte con los tests en verde. **Mantener `this`
-  como scope y los mismos ids de construct**: cambiarlos, o mover recursos a un construct
-  hijo, altera los identificadores lógicos de CloudFormation y, con `functionName` fijo,
-  el despliegue fallaría con "ya existe". Los tests no detectan ese cambio; red de
-  seguridad: un test temporal que imprima `findResources(...).keySet()` de
-  `AWS::Lambda::Function`, `AWS::ApiGatewayV2::Route` y `AWS::IAM::Policy` antes y
-  después, que debe salir idéntico. Tras el push, el stack no debería mostrar cambios de
-  recursos. Extraer el localizador del jar solo cuando `courses-service` tenga Lambda.
-  Comprobar si `getRegisterStudentFunction()` lo usa alguien; si no, eliminarlo.
+**Fase 2, Día 8 — cerrado y verificado en producción (21-10-2026)** — Cognito: User Pool,
+grupos, autorizador JWT en las dos rutas y control de acceso por grupo en los dos
+handlers. `students-service` (37 tests) e `infra` (14 tests) en verde; desplegado por el
+pipeline y comprobado con las seis llamadas (401, 401, 403, 200, 403, 201). Detalle en
+"Hecho hasta ahora".
+
+**Pendientes que dejan los Días 7 y 8 (ninguno bloquea el Día 9):**
+- **Datos de prueba por limpiar**: los usuarios `profe@example.com` y `alumno@example.com`
+  del User Pool, y el alumno `Prueba Cognito` (`prueba.cognito@example.com`) creado por el
+  `POST` de la prueba, en `StudentsTable`.
+- **Varios grupos en un mismo usuario**: los tests unitarios asumen `[teacher admin]`
+  (separado por espacios) y la prueba real solo vio un grupo. Verificar con un usuario en
+  `teacher` y `admin`; si API Gateway lo entrega con comas, hay que ajustar `parse` y su
+  test.
+- **`USER_PASSWORD_AUTH`** envía la contraseña tal cual a Cognito (por TLS); aceptable para
+  pruebas, pero el frontend de la Fase 6 debe usar SRP y cambiar el cliente.
+- **Propiedad del recurso**: sin vínculo entre usuario de Cognito y alumno, el grupo
+  `student` no puede nada. «Un alumno solo sube su propia foto» queda pendiente de enlazar
+  ambos (probablemente con un atributo del usuario o el `sub` guardado en el alumno).
 - **`Content-Type: application/json`** en las respuestas de los handlers (hoy salen como
   `text/plain`), con su test, en `RegisterStudentHandler` y `RequestStudentPhotoUploadHandler`.
+- **Limpieza** en `RequestStudentPhotoUploadHandler`: constante `GROUPS_CLAIM` e import
+  `Optional` sin usar. En `CallerGroups`, comprobar si `isEmpty()` sigue teniendo algún
+  llamador; si no, eliminarlo (código sin consumidor ni test).
+- **Limitación conocida**: el endpoint de la foto firma una URL para cualquier UUID válido,
+  exista o no ese alumno (el `UseCase` no consulta `StudentRepository`). Ya hay
+  autenticación y solo `teacher` y `admin` pueden pedirla, pero un profesor podría dejar
+  objetos huérfanos; comprobar la existencia del alumno queda para más adelante. Tampoco
+  hay CORS en el bucket ni en la API: hará falta en la Fase 6.
 - Opcionales: test `returns400WhenPathParametersAreNull`, test `failsFromNullIdentifier`
-  en `commons`, y actualizar el Javadoc de `StudentsStack` (no menciona el bucket).
-- **Limitación conocida**: el endpoint firma una URL para cualquier UUID válido, exista o
-  no ese alumno (el `UseCase` no consulta `StudentRepository`); sin autenticación,
-  podría dejar objetos huérfanos en el bucket. La autenticación del Día 8 (Cognito) cubre
-  una parte; comprobar la existencia del alumno queda para más adelante. Tampoco hay
-  CORS en el bucket ni en la API: hará falta al construir el frontend (Fase 6).
+  en `commons`, un test que fije los identificadores lógicos de las dos Lambdas (con
+  `functionName` fijo, cambiarlos hace fallar el despliegue con «ya existe»), y actualizar
+  el Javadoc de `StudentsStack` (no menciona el bucket ni el pool).
 
-**Fase 2, Día 8 — Cognito (grupos de roles)**: separado de S3 en un día propio
-(reordenamiento confirmado por José). Pendiente desde la Fase 1. El curso de
-certificación AWS Developer (`Developing on AWS`, módulo 12) confirma que es un bloque
-de examen con peso real.
-
-**Fase 2, Día 9 — Observabilidad (CloudWatch + X-Ray)**: módulo 14 de 15 del mismo
-curso. Alcance a definir (métricas custom vía EMF, trazas X-Ray sobre API Gateway →
-Lambda → DynamoDB).
+**Fase 2, Día 9 — Observabilidad (CloudWatch + X-Ray)**: módulo 14 de 15 del curso de
+certificación. Las dos Lambdas ya tienen `Tracing.ACTIVE` (X-Ray) desde el Día 7, así que
+parte del trabajo está hecho. Alcance a definir: métricas propias con EMF, trazas sobre
+API Gateway → Lambda → DynamoDB, un panel o alarmas básicas, y los registros de las
+Lambdas.
 
 **`CoursesServiceFactory`** sigue pospuesta hasta que exista el Lambda handler de
 matrícula (no se crea infraestructura sin consumidor).

@@ -122,7 +122,7 @@ explicitly, with an estimate, before being introduced.
 |---|---|---|
 | 0 | Setup & diagnosis | ✅ Closed |
 | 1 | Students (CRUD, DynamoDB, Lambda, API Gateway, CI/CD pipeline) | ✅ Closed — deployed and verified end-to-end in production |
-| 2 | Courses — hexagonal architecture | 🔄 In progress (Día 7 of 9 closed — both services migrated to hexagonal; student photo upload via S3 presigned URL deployed and verified) |
+| 2 | Courses — hexagonal architecture | 🔄 In progress (Día 8 of 9 closed — both services migrated to hexagonal; student photo upload via S3 presigned URL and Cognito authentication deployed and verified) |
 | 3 | Exams / Questions | ⏳ Pending |
 | 4 | Answers | ⏳ Pending |
 | 5 | Subjects (parent/child hierarchy, cursor pagination) | ⏳ Pending |
@@ -165,7 +165,7 @@ API Gateway, backed by a Lambda (Java 17) writing to DynamoDB with an atomic con
 write. The pipeline (Source → Synth → SelfMutate → Assets → Deploy) runs green
 end-to-end.
 
-**Phase 2 (Courses) in progress — Día 7 of 9 closed.** Both `courses-service` and
+**Phase 2 (Courses) in progress — Día 8 of 9 closed.** Both `courses-service` and
 `students-service` are fully migrated to the hexagonal layout, applied via the
 `hexagonal-retrofit` Claude Code Skill (`.claude/skills/hexagonal-retrofit/`) —
 `courses-service` in one batched commit
@@ -193,5 +193,18 @@ to `grant*`). Verified against production after the pipeline deployed it: `GET` 
 `200` with a presigned URL, a `PUT` to that URL is accepted by S3 (`200`, the object
 lands under `students/<uuid>/photo`), and a malformed id returns `422`. Known
 limitations: the endpoint signs a URL for any well-formed UUID, whether or not that
-student exists, and JSON responses are served as `text/plain`. Next: Cognito role
-groups (Día 8), then observability with CloudWatch and X-Ray (Día 9).
+student exists, and JSON responses are served as `text/plain`.
+
+**Día 8 — authentication and authorization (deployed and verified).** A Cognito User Pool
+where only an administrator creates users, three groups (`student`, `teacher`, `admin`),
+one app client and a JWT authorizer on both routes. API Gateway validates the token before
+the Lambda runs; the handlers then decide by group with an allow-list (`teacher` and
+`admin`) and deny by default: no identity, an unknown group or a malformed claim all
+return `403`. Requests without a token return `401`. Verified against production with test
+users: no token and a forged token `401`, a student `403`, a teacher `200`/`201`. A small
+`CallerGroups` class parses the `cognito:groups` claim strictly, and every access-control
+test was checked by deliberately breaking the code. Known limitations: students cannot do
+anything yet because there is no link between a Cognito user and a student record, so
+"a student may only upload their own photo" is still open; the test client uses
+`USER_PASSWORD_AUTH`, which the frontend must replace with SRP. Next: observability with
+CloudWatch and X-Ray (Día 9).
