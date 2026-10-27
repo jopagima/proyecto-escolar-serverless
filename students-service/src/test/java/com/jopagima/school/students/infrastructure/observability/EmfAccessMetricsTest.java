@@ -1,6 +1,7 @@
 package com.jopagima.school.students.infrastructure.observability;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -52,5 +53,13 @@ public class EmfAccessMetricsTest {
 
         assertEquals("GroupNotAllowed", objectMapper.readTree(lines.get(0)).get("Reason").asText());
         assertEquals("NoGroups", objectMapper.readTree(lines.get(1)).get("Reason").asText());
-    }    
+    } 
+    
+    @Test
+    void emitsExactlyOneSingleLineDocumentPerDenial() {
+        metrics.recordDenied("RegisterStudent", DenialReason.GROUP_NOT_ALLOWED);
+
+        assertEquals(1, lines.size());
+        assertFalse(lines.get(0).contains("\n"));
+    }       
 }
