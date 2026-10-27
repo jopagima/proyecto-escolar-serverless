@@ -5,7 +5,7 @@ package com.jopagima.school.students.infrastructure.observability;
  */
 public enum DenialReason {
 
-    GROUP_NOT_ALLOWED("GroupNotAllowed");
+    GROUP_NOT_ALLOWED("GroupNotAllowed"), NO_GROUPS("NoGroups");
 
     private final String label;
 

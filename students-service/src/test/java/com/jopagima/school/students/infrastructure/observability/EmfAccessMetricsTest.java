@@ -34,4 +34,14 @@ public class EmfAccessMetricsTest {
         assertEquals("Reason", definition.at("/Dimensions/0/1").asText());
         assertTrue(line.at("/_aws/Timestamp").isNumber());
     }
+
+    @Test
+    void writesTheValueAndTheDimensionValuesAtTheTopLevel() throws Exception {
+        metrics.recordDenied("RegisterStudent", DenialReason.NO_GROUPS);
+
+        JsonNode line = objectMapper.readTree(lines.get(0));
+        assertEquals(1, line.get("AccessDenied").asInt());
+        assertEquals("RegisterStudent", line.get("Operation").asText());
+        assertEquals("NoGroups", line.get("Reason").asText());
+    }    
 }
