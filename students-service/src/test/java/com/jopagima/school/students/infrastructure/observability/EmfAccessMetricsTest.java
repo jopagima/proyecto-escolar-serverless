@@ -43,5 +43,14 @@ public class EmfAccessMetricsTest {
         assertEquals(1, line.get("AccessDenied").asInt());
         assertEquals("RegisterStudent", line.get("Operation").asText());
         assertEquals("NoGroups", line.get("Reason").asText());
+    }  
+    
+    @Test
+    void publishesBothReasonsWithTheirStableLabels() throws Exception {
+        metrics.recordDenied("RegisterStudent", DenialReason.GROUP_NOT_ALLOWED);
+        metrics.recordDenied("RegisterStudent", DenialReason.NO_GROUPS);
+
+        assertEquals("GroupNotAllowed", objectMapper.readTree(lines.get(0)).get("Reason").asText());
+        assertEquals("NoGroups", objectMapper.readTree(lines.get(1)).get("Reason").asText());
     }    
 }
