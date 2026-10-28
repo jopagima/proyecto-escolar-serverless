@@ -7,6 +7,7 @@ import com.jopagima.school.students.application.RequestStudentPhotoUploadUseCase
 import com.jopagima.school.students.application.ports.PhotoStoragePort;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -101,5 +102,18 @@ public class RequestStudentPhotoUploadHandlerTest {
         event.setPathParameters(Map.of("studentId", Id.generateUniqueIdentifier().toString()));
 
         assertEquals(200, handler.handleRequest(event, null).getStatusCode());
+    }
+    
+    @Test
+    void recordsAGroupNotAllowedDenialWhenCallerIsAStudent() {
+        RecordingAccessMetrics metrics = new RecordingAccessMetrics();
+        RequestStudentPhotoUploadHandler handler = new RequestStudentPhotoUploadHandler(
+                new RequestStudentPhotoUploadUseCase(objectKey -> "unused"), metrics);
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[student]");
+        event.setPathParameters(Map.of("studentId", Id.generateUniqueIdentifier().toString()));
+
+        handler.handleRequest(event, null);
+
+        assertEquals(List.of("RequestPhotoUpload:GroupNotAllowed"), metrics.denials);
     }    
 }

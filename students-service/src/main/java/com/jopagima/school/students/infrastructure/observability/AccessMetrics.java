@@ -7,4 +7,8 @@ public interface AccessMetrics {
 
     void recordDenied(String operation, DenialReason reason);
 
+    static AccessMetrics noop() {
+       return (operation, reason) -> { };
+    }
+
 }

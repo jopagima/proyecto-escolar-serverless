@@ -7,7 +7,7 @@ import com.jopagima.school.students.application.RequestStudentPhotoUploadUseCase
 import com.jopagima.school.students.application.ports.PhotoStoragePort;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import com.jopagima.school.students.infrastructure.adapters.S3PhotoStorageAdapter;
-
+import com.jopagima.school.students.infrastructure.observability.AccessMetrics;
 
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
@@ -35,5 +35,10 @@ public final class StudentsServiceFactory {
         DynamoDbClient client = DynamoDbClient.create();
         String tableName = System.getenv("TABLE_NAME");
         return new DynamoDbStudentRepository(client, tableName);
+    }
+
+    public static AccessMetrics createAccessMetrics() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'createAccessMetrics'");
     }
 }

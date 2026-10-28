@@ -10,24 +10,33 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jopagima.school.commons.domain.ValidationError;
 import com.jopagima.school.students.application.RequestStudentPhotoUploadUseCase;
 import com.jopagima.school.students.infrastructure.factory.StudentsServiceFactory;
+import com.jopagima.school.students.infrastructure.observability.AccessMetrics;
+import com.jopagima.school.students.infrastructure.observability.DenialReason;
 import com.jopagima.school.students.infrastructure.security.CallerGroups;
 
 public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
     private final RequestStudentPhotoUploadUseCase useCase;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private AccessMetrics metrics;
+
     public RequestStudentPhotoUploadHandler() {
-        this.useCase = StudentsServiceFactory.createRequestStudentPhotoUploadUseCase();
-        
+        this(StudentsServiceFactory.createRequestStudentPhotoUploadUseCase(), AccessMetrics.noop());
     }
 
     public RequestStudentPhotoUploadHandler(RequestStudentPhotoUploadUseCase useCase) {
+        this(useCase, AccessMetrics.noop());
+    }
+
+    public RequestStudentPhotoUploadHandler(RequestStudentPhotoUploadUseCase useCase, AccessMetrics metrics) {
         this.useCase = useCase;
+        this.metrics = metrics;
     }
 
     @Override
     public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent input, Context context) {
         CallerGroups groupsFromJwt = CallerGroups.from(input);
         if (!groupsFromJwt.hasAnyOf("teacher", "admin") ) {
+            metrics.recordDenied("RequestPhotoUpload", DenialReason.GROUP_NOT_ALLOWED);
             return response(403, Map.of("error", "Only teachers and admins are allowed to request photo upload URLs"));
         }
         String studentIdFromPath = input.getPathParameters().get("studentId");
