@@ -73,4 +73,10 @@ public class CallerGroupsTest {
     void deniesWhenTheEventHasNoIdentity() {
         assertFalse(CallerGroups.from(new APIGatewayV2HTTPEvent()).hasAnyOf("teacher", "admin"));
     }
+
+    @Test
+    void isEmptyOnlyWhenThereAreNoGroups() {
+        assertTrue(CallerGroups.parse(null).isEmpty());
+        assertFalse(CallerGroups.parse("[student]").isEmpty());
+    }
 }
