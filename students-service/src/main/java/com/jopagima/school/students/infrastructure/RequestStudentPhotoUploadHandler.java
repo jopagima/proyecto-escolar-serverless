@@ -34,11 +34,15 @@ public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatew
 
     @Override
     public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent input, Context context) {
+        String operation = "RequestPhotoUpload";
         CallerGroups groupsFromJwt = CallerGroups.from(input);
+
         if (!groupsFromJwt.hasAnyOf("teacher", "admin") ) {
-            metrics.recordDenied("RequestPhotoUpload", DenialReason.GROUP_NOT_ALLOWED);
+            DenialReason denialReason = (groupsFromJwt.isEmpty()) ? DenialReason.NO_GROUPS : DenialReason.GROUP_NOT_ALLOWED;
+            metrics.recordDenied(operation, denialReason);
             return response(403, Map.of("error", "Only teachers and admins are allowed to request photo upload URLs"));
         }
+
         String studentIdFromPath = input.getPathParameters().get("studentId");
         if(studentIdFromPath == null || studentIdFromPath.isEmpty()) {
             return response(400, Map.of("error", "Missing student ID in path parameters"));

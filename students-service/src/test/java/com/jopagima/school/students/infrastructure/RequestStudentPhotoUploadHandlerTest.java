@@ -115,5 +115,18 @@ public class RequestStudentPhotoUploadHandlerTest {
         handler.handleRequest(event, null);
 
         assertEquals(List.of("RequestPhotoUpload:GroupNotAllowed"), metrics.denials);
+    }
+    
+    @Test
+    void recordsANoGroupsDenialWhenThereIsNoIdentity() {
+        RecordingAccessMetrics metrics = new RecordingAccessMetrics();
+        RequestStudentPhotoUploadHandler handler = new RequestStudentPhotoUploadHandler(
+                new RequestStudentPhotoUploadUseCase(objectKey -> "unused"), metrics);
+        APIGatewayV2HTTPEvent event = new APIGatewayV2HTTPEvent();
+        event.setPathParameters(Map.of("studentId", Id.generateUniqueIdentifier().toString()));
+
+        handler.handleRequest(event, null);
+
+        assertEquals(List.of("RequestPhotoUpload:NoGroups"), metrics.denials);
     }    
 }
