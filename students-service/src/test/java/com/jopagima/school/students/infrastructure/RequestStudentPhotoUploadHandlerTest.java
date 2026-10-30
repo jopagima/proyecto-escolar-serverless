@@ -128,5 +128,18 @@ public class RequestStudentPhotoUploadHandlerTest {
         handler.handleRequest(event, null);
 
         assertEquals(List.of("RequestPhotoUpload:NoGroups"), metrics.denials);
-    }    
+    }
+    
+    @Test
+    void recordsAGroupNotAllowedDenialWhenCallerBelongsToAnUnknownGroup() {
+        RecordingAccessMetrics metrics = new RecordingAccessMetrics();
+        RequestStudentPhotoUploadHandler handler = new RequestStudentPhotoUploadHandler(
+                new RequestStudentPhotoUploadUseCase(objectKey -> "unused"), metrics);
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[parent]");
+        event.setPathParameters(Map.of("studentId", Id.generateUniqueIdentifier().toString()));
+
+        handler.handleRequest(event, null);
+
+        assertEquals(List.of("RequestPhotoUpload:GroupNotAllowed"), metrics.denials);
+    }       
 }
