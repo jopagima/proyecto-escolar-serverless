@@ -15,12 +15,13 @@ import com.jopagima.school.students.infrastructure.observability.DenialReason;
 import com.jopagima.school.students.infrastructure.security.CallerGroups;
 
 public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
+    private final String OPERATION = "RequestPhotoUpload";
     private final RequestStudentPhotoUploadUseCase useCase;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private AccessMetrics metrics;
+    private final AccessMetrics metrics;
 
     public RequestStudentPhotoUploadHandler() {
-        this(StudentsServiceFactory.createRequestStudentPhotoUploadUseCase(), AccessMetrics.noop());
+        this(StudentsServiceFactory.createRequestStudentPhotoUploadUseCase(), StudentsServiceFactory.createAccessMetrics());
     }
 
     public RequestStudentPhotoUploadHandler(RequestStudentPhotoUploadUseCase useCase) {
@@ -34,12 +35,12 @@ public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatew
 
     @Override
     public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent input, Context context) {
-        String operation = "RequestPhotoUpload";
+        
         CallerGroups groupsFromJwt = CallerGroups.from(input);
 
         if (!groupsFromJwt.hasAnyOf("teacher", "admin") ) {
             DenialReason denialReason = (groupsFromJwt.isEmpty()) ? DenialReason.NO_GROUPS : DenialReason.GROUP_NOT_ALLOWED;
-            metrics.recordDenied(operation, denialReason);
+            metrics.recordDenied(OPERATION, denialReason);
             return response(403, Map.of("error", "Only teachers and admins are allowed to request photo upload URLs"));
         }
 

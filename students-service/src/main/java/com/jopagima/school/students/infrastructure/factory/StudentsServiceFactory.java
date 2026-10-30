@@ -8,6 +8,7 @@ import com.jopagima.school.students.application.ports.PhotoStoragePort;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import com.jopagima.school.students.infrastructure.adapters.S3PhotoStorageAdapter;
 import com.jopagima.school.students.infrastructure.observability.AccessMetrics;
+import com.jopagima.school.students.infrastructure.observability.EmfAccessMetrics;
 
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 
@@ -38,7 +39,6 @@ public final class StudentsServiceFactory {
     }
 
     public static AccessMetrics createAccessMetrics() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'createAccessMetrics'");
+        return EmfAccessMetrics.toStandardOutput();
     }
 }
