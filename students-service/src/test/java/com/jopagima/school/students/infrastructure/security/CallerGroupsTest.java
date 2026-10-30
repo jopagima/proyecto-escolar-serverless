@@ -1,5 +1,6 @@
 package com.jopagima.school.students.infrastructure.security;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -8,6 +9,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
+import com.jopagima.school.students.infrastructure.observability.DenialReason;
 
 public class CallerGroupsTest {
     @Test 
@@ -79,4 +81,10 @@ public class CallerGroupsTest {
         assertTrue(CallerGroups.parse(null).isEmpty());
         assertFalse(CallerGroups.parse("[student]").isEmpty());
     }
+
+    @Test
+    void denialReasonIsNoGroupsOnlyWhenThereAreNoGroups() {
+        assertEquals(DenialReason.NO_GROUPS, CallerGroups.parse(null).denialReason());
+        assertEquals(DenialReason.GROUP_NOT_ALLOWED, CallerGroups.parse("[parent]").denialReason());
+    }    
 }
