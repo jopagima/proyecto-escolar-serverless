@@ -8,6 +8,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -142,6 +144,18 @@ public class RegisterStudentHandlerTest {
         APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[teacher]");
         event.setBody(body);
         return event;
+    }
+
+
+    @Test 
+    void recordsAGroupNotAllowedDenialWhenCallerIsAStudent () {
+        RecordingAccessMetrics metrics = new RecordingAccessMetrics();
+        RegisterStudentHandler handler = new RegisterStudentHandler(
+                new RegisterStudentUseCase(studentRepository), metrics);
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[student]");
+        event.setBody("{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
+        handler.handleRequest(event, null);
+        assertEquals(List.of("RegisterStudent:GroupNotAllowed"), metrics.denials);
     }
     
 

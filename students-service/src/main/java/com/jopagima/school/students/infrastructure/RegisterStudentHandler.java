@@ -12,6 +12,8 @@ import com.jopagima.school.commons.domain.ErrorType;
 import com.jopagima.school.commons.domain.ValidationError;
 import com.jopagima.school.students.application.RegisterStudentUseCase;
 import com.jopagima.school.students.infrastructure.factory.StudentsServiceFactory;
+import com.jopagima.school.students.infrastructure.observability.AccessMetrics;
+import com.jopagima.school.students.infrastructure.observability.DenialReason;
 import com.jopagima.school.students.infrastructure.security.CallerGroups;
 
 /**
@@ -22,19 +24,27 @@ import com.jopagima.school.students.infrastructure.security.CallerGroups;
 public class RegisterStudentHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
     private final RegisterStudentUseCase registerStudentUseCase;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final String OPERATION = "RegisterStudent";
+    private final AccessMetrics metrics;
 
 
     public RegisterStudentHandler() {
-        this(StudentsServiceFactory.createRegisterStudentUseCase());
+        this(StudentsServiceFactory.createRegisterStudentUseCase(), StudentsServiceFactory.createAccessMetrics());
     }
     public RegisterStudentHandler(RegisterStudentUseCase registerStudentUseCase) {
-        this.registerStudentUseCase = registerStudentUseCase;
+        this(registerStudentUseCase, AccessMetrics.noop());
+    }
+
+    public RegisterStudentHandler(RegisterStudentUseCase useCase, AccessMetrics metrics) {
+        this.registerStudentUseCase = useCase;
+        this.metrics = metrics;
     }
 
     @Override
     public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent input, Context context) {
         CallerGroups groupsFromJwt = CallerGroups.from(input);
         if (!groupsFromJwt.hasAnyOf("teacher", "admin") ) {
+             metrics.recordDenied(OPERATION, DenialReason.GROUP_NOT_ALLOWED);
             return buildResponse(403,  "Only teachers and admins are allowed to register students");
         }
         if (input.getBody() == null || input.getBody().isBlank()) {
