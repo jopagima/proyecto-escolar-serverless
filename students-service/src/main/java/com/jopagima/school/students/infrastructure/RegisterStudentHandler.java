@@ -44,7 +44,8 @@ public class RegisterStudentHandler implements RequestHandler<APIGatewayV2HTTPEv
     public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent input, Context context) {
         CallerGroups groupsFromJwt = CallerGroups.from(input);
         if (!groupsFromJwt.hasAnyOf("teacher", "admin") ) {
-             metrics.recordDenied(OPERATION, DenialReason.GROUP_NOT_ALLOWED);
+            DenialReason denialReason = (groupsFromJwt.isEmpty()) ? DenialReason.NO_GROUPS : DenialReason.GROUP_NOT_ALLOWED;
+            metrics.recordDenied(OPERATION, denialReason);
             return buildResponse(403,  "Only teachers and admins are allowed to register students");
         }
         if (input.getBody() == null || input.getBody().isBlank()) {
