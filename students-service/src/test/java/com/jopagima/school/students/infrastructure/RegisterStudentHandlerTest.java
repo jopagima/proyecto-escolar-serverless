@@ -183,6 +183,20 @@ public class RegisterStudentHandlerTest {
         handler.handleRequest(event, null);
         assertEquals(List.of("RegisterStudent:GroupNotAllowed"), metrics.denials);
     }
+
+    @Test
+    void recordsNothingWhenCallerIsAllowed() {
+        RecordingAccessMetrics metrics = new RecordingAccessMetrics();
+        RegisterStudentHandler handler = new RegisterStudentHandler(
+                new RegisterStudentUseCase(studentRepository), metrics);
+
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[teacher]");
+        event.setBody("{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
+
+        handler.handleRequest(event, null);
+
+        assertTrue(metrics.denials.isEmpty());
+    }    
     
 
 }
