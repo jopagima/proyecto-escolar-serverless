@@ -47,7 +47,20 @@ public class RequestStudentPhotoUploadHandlerTest {
         APIGatewayV2HTTPResponse response = handler.handleRequest(event, null);
 
         assertEquals(400, response.getStatusCode());
-    }   
+    }  
+    
+    @Test
+    void recordsNothingWhenCallerIsAllowed() {
+        RecordingAccessMetrics metrics = new RecordingAccessMetrics();
+        RequestStudentPhotoUploadHandler handler = new RequestStudentPhotoUploadHandler(
+                new RequestStudentPhotoUploadUseCase(objectKey -> "https://fake-bucket/" + objectKey), metrics);
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[teacher]");
+        event.setPathParameters(Map.of("studentId", Id.generateUniqueIdentifier().toString()));
+
+        handler.handleRequest(event, null);
+
+        assertTrue(metrics.denials.isEmpty());
+    }      
 
     @Test
     void returns422WhenStudentIdIsMalformed() {
@@ -141,5 +154,6 @@ public class RequestStudentPhotoUploadHandlerTest {
         handler.handleRequest(event, null);
 
         assertEquals(List.of("RequestPhotoUpload:GroupNotAllowed"), metrics.denials);
-    }       
+    }
+    
 }
