@@ -7,6 +7,7 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
+import com.jopagima.school.students.infrastructure.observability.DenialReason;
 
 /**
  * CallerGroups
@@ -55,6 +56,10 @@ public class CallerGroups {
 
     public boolean isEmpty() {
         return groups.isEmpty();
+    }
+
+    public DenialReason denialReason() {
+          return (isEmpty()) ? DenialReason.NO_GROUPS : DenialReason.GROUP_NOT_ALLOWED;
     }
 
 }

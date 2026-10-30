@@ -39,8 +39,7 @@ public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatew
         CallerGroups groupsFromJwt = CallerGroups.from(input);
 
         if (!groupsFromJwt.hasAnyOf("teacher", "admin") ) {
-            DenialReason denialReason = (groupsFromJwt.isEmpty()) ? DenialReason.NO_GROUPS : DenialReason.GROUP_NOT_ALLOWED;
-            metrics.recordDenied(OPERATION, denialReason);
+            metrics.recordDenied(OPERATION, groupsFromJwt.denialReason());
             return response(403, Map.of("error", "Only teachers and admins are allowed to request photo upload URLs"));
         }
 
