@@ -171,6 +171,18 @@ public class RegisterStudentHandlerTest {
 
         assertEquals(List.of("RegisterStudent:NoGroups"), metrics.denials);
     }    
+
+
+    @Test 
+    void recordsAGroupNotAllowedDenialWhenCallerBelongsToAnUnknownGroup () {
+        RecordingAccessMetrics metrics = new RecordingAccessMetrics();
+        RegisterStudentHandler handler = new RegisterStudentHandler(
+                new RegisterStudentUseCase(studentRepository), metrics);
+        APIGatewayV2HTTPEvent event = AuthenticatedEvents.withGroups("[parent]");
+        event.setBody("{\"firstName\":\"Ana\",\"lastName\":\"Garcia\",\"email\":\"ana.garcia@example.com\"}");
+        handler.handleRequest(event, null);
+        assertEquals(List.of("RegisterStudent:GroupNotAllowed"), metrics.denials);
+    }
     
 
 }
