@@ -13,7 +13,6 @@ import com.jopagima.school.commons.domain.ValidationError;
 import com.jopagima.school.students.application.RegisterStudentUseCase;
 import com.jopagima.school.students.infrastructure.factory.StudentsServiceFactory;
 import com.jopagima.school.students.infrastructure.observability.AccessMetrics;
-import com.jopagima.school.students.infrastructure.observability.DenialReason;
 import com.jopagima.school.students.infrastructure.security.CallerGroups;
 
 /**
@@ -24,7 +23,7 @@ import com.jopagima.school.students.infrastructure.security.CallerGroups;
 public class RegisterStudentHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
     private final RegisterStudentUseCase registerStudentUseCase;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final String OPERATION = "RegisterStudent";
+    private static final String OPERATION = "RegisterStudent";
     private final AccessMetrics metrics;
 
 

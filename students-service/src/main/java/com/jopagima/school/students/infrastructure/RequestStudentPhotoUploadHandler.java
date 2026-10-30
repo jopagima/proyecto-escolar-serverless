@@ -11,11 +11,10 @@ import com.jopagima.school.commons.domain.ValidationError;
 import com.jopagima.school.students.application.RequestStudentPhotoUploadUseCase;
 import com.jopagima.school.students.infrastructure.factory.StudentsServiceFactory;
 import com.jopagima.school.students.infrastructure.observability.AccessMetrics;
-import com.jopagima.school.students.infrastructure.observability.DenialReason;
 import com.jopagima.school.students.infrastructure.security.CallerGroups;
 
 public class RequestStudentPhotoUploadHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
-    private final String OPERATION = "RequestPhotoUpload";
+    private static final String OPERATION = "RequestPhotoUpload";
     private final RequestStudentPhotoUploadUseCase useCase;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final AccessMetrics metrics;

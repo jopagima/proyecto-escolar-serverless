@@ -38,7 +38,7 @@ public class S3PhotoStorageAdapter implements PhotoStoragePort {
 
         PresignedPutObjectRequest presignedRequest = presigner.presignPutObject(presignRequest);
 
-        logger.info("Generated pre-signed URL for S3 upload: {}", presignedRequest.url().toString());
+        logger.info("Generated pre-signed URL for key: {}", objectKey);
         return presignedRequest.url().toString();
     }
 
