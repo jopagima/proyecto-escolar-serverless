@@ -1,5 +1,6 @@
 package com.jopagima.school.infra.students;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -86,5 +87,16 @@ public class StudentsApiConstructTest {
         template.hasResourceProperties("AWS::ApiGatewayV2::Route", Map.of(
                 "RouteKey", "GET /students/{studentId}/photo-upload-url", "AuthorizationType", "JWT"));
     }       
+
+    @Test
+    void keepsEveryLambdaLogGroupForTwoWeeks() {
+        Map<String, Map<String, Object>> retentions = template.findResources("Custom::LogRetention");
+
+        assertEquals(2, retentions.size());
+        retentions.values().forEach(resource -> {
+            Map<?, ?> properties = (Map<?, ?>) resource.get("Properties");
+            assertEquals(14, ((Number) properties.get("RetentionInDays")).intValue());
+        });
+    }
 
 }

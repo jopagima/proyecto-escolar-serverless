@@ -15,6 +15,7 @@ import software.amazon.awscdk.services.lambda.Function;
 import software.amazon.awscdk.services.lambda.Runtime;
 import software.amazon.awscdk.services.lambda.Tracing;
 import software.amazon.awscdk.services.s3.Bucket;
+import software.amazon.awscdk.services.logs.RetentionDays;
 import software.constructs.Construct;
 import java.io.File;
 import java.util.List;
@@ -83,6 +84,7 @@ public class StudentsApiConstruct extends Construct {
             .timeout(Duration.seconds(timeoutSeconds))
             .tracing(Tracing.ACTIVE)
             .environment(environment)
+            .logRetention(RetentionDays.TWO_WEEKS)
             .build();
     }
 
