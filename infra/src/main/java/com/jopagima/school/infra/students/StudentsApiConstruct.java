@@ -32,10 +32,6 @@ public class StudentsApiConstruct extends Construct {
     private final Function registerStudentFunction;
     private final Function photoUploadFunction;
 
-    public Function getRegisterStudentFunction() {
-        return registerStudentFunction;
-    }
-
     public StudentsApiConstruct(Construct scope, String id, Table table, Bucket bucket, IHttpRouteAuthorizer authorizer) {
         super(scope, id);
 
@@ -63,6 +59,16 @@ public class StudentsApiConstruct extends Construct {
         addRoute(httpApi, "/students/{studentId}/photo-upload-url", HttpMethod.GET,
                 "PhotoUploadIntegration", photoUploadFunction, authorizer);
     }
+
+    public Function getPhotoUploadFunction() {
+        return photoUploadFunction;
+    }
+
+    public Function getRegisterStudentFunction() {
+        return registerStudentFunction;
+    }
+
+    
 
     /**
      * Every students-service Lambda shares runtime, sizing, tracing and the same jar;
