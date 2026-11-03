@@ -1,5 +1,7 @@
 package com.jopagima.school.infra.students;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -41,5 +43,17 @@ public class StudentsAlertsConstructTest {
         template.hasResourceProperties("AWS::CloudWatch::Alarm", Map.of(
                 "MetricName", "Errors",
                 "Namespace", "AWS/Lambda"));
-    }     
+    }
+    
+    @Test
+    void everyAlarmWatchesTheLambdaErrorsMetric() {
+        Map<String, Map<String, Object>> alarms = template.findResources("AWS::CloudWatch::Alarm");
+
+        assertEquals(2, alarms.size());
+        alarms.values().forEach(alarm -> {
+            Map<?, ?> properties = (Map<?, ?>) alarm.get("Properties");
+            assertEquals("Errors", properties.get("MetricName"));
+            assertEquals("AWS/Lambda", properties.get("Namespace"));
+        });
+    }    
 }
