@@ -3,9 +3,10 @@ package com.jopagima.school.infra.students;
 
 import software.amazon.awscdk.services.cloudwatch.Metric;
 import software.amazon.awscdk.services.cloudwatch.MetricOptions;
-
+import software.amazon.awscdk.services.cloudwatch.actions.SnsAction;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.services.lambda.Function;
+import software.amazon.awscdk.services.sns.Topic;
 import software.constructs.Construct;
 import software.amazon.awscdk.services.cloudwatch.Alarm;
 import software.amazon.awscdk.services.cloudwatch.CreateAlarmOptions;
@@ -17,18 +18,20 @@ public class StudentsAlertsConstruct extends Construct {
 
     public StudentsAlertsConstruct(Construct scope, String id, Function registerStudent, Function photoUpload) {
         super(scope, id);
-        createAlarm("RegisterStudentErrorsAlarm", registerStudent);
-        createAlarm( "PhotoUploadErrorsAlarm", photoUpload);
+        Topic operationalAlertsTopic = new Topic(this, "OperationalAlertsTopic");
+        createAlarm("RegisterStudentErrorsAlarm", registerStudent, operationalAlertsTopic);
+        createAlarm("PhotoUploadErrorsAlarm", photoUpload, operationalAlertsTopic);
     }
 
-    private Alarm createAlarm(String alarmId, Function function) {
+    private void createAlarm(String alarmId, Function function, Topic topic) {
         Metric functionMetric = errorsMetricOf(function);    
 
-        return functionMetric.createAlarm(this, alarmId, 
+        Alarm alarm = functionMetric.createAlarm(this, alarmId, 
             CreateAlarmOptions.builder()
                 .threshold(1)
                 .evaluationPeriods(1)
                 .build());
+        alarm.addAlarmAction(new SnsAction(topic));
     }
 
     private Metric errorsMetricOf(Function function) {

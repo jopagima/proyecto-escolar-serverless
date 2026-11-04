@@ -1,6 +1,7 @@
 package com.jopagima.school.infra.students;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.HashSet;
 import java.util.List;
@@ -59,7 +60,7 @@ public class StudentsAlertsConstructTest {
             assertEquals("AWS/Lambda", properties.get("Namespace"));
         });
     }  
-    
+
     @Test
     void everyAlarmWatchesADifferentLambda() {
         Map<String, Map<String, Object>> alarms = template.findResources("AWS::CloudWatch::Alarm");
@@ -75,5 +76,12 @@ public class StudentsAlertsConstructTest {
         });
 
         assertEquals(2, watchedFunctions.size());
-    }      
+    }
+    
+    @Test
+    void notifiesTheOperationalAlertsTopicFromEveryAlarm() {
+        template.resourceCountIs("AWS::SNS::Topic", 1);
+        template.findResources("AWS::CloudWatch::Alarm").values().forEach(alarm ->
+                assertNotNull(((Map<?, ?>) alarm.get("Properties")).get("AlarmActions")));
+    }
 }
