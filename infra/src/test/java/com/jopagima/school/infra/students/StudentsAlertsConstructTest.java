@@ -95,6 +95,7 @@ public class StudentsAlertsConstructTest {
     
     @Test
     void raisesTheAlarmOnTheFirstErrorWithinFiveMinutes() {
+        template.resourceCountIs("AWS::CloudWatch::Alarm", 2);
         template.findResources("AWS::CloudWatch::Alarm").values().forEach(alarm -> {
             Map<?, ?> properties = (Map<?, ?>) alarm.get("Properties");
             assertEquals(1, ((Number) properties.get("Threshold")).intValue());
