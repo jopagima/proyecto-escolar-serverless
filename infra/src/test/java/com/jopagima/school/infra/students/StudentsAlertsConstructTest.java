@@ -91,5 +91,16 @@ public class StudentsAlertsConstructTest {
             Map<?, ?> properties = (Map<?, ?>) alarm.get("Properties");
             assertEquals("notBreaching", properties.get("TreatMissingData"));
         });
-    }    
+    } 
+    
+    @Test
+    void raisesTheAlarmOnTheFirstErrorWithinFiveMinutes() {
+        template.findResources("AWS::CloudWatch::Alarm").values().forEach(alarm -> {
+            Map<?, ?> properties = (Map<?, ?>) alarm.get("Properties");
+            assertEquals(1, ((Number) properties.get("Threshold")).intValue());
+            assertEquals(300, ((Number) properties.get("Period")).intValue());
+            assertEquals(1, ((Number) properties.get("EvaluationPeriods")).intValue());
+            assertEquals("GreaterThanOrEqualToThreshold", properties.get("ComparisonOperator"));
+        });
+    }        
 }
