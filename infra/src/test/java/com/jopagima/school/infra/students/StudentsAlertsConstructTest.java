@@ -84,4 +84,12 @@ public class StudentsAlertsConstructTest {
         template.findResources("AWS::CloudWatch::Alarm").values().forEach(alarm ->
                 assertNotNull(((Map<?, ?>) alarm.get("Properties")).get("AlarmActions")));
     }
+
+    @Test
+    void doesNotAlarmWhenThereIsNoTraffic() {
+        template.findResources("AWS::CloudWatch::Alarm").values().forEach(alarm -> {
+            Map<?, ?> properties = (Map<?, ?>) alarm.get("Properties");
+            assertEquals("notBreaching", properties.get("TreatMissingData"));
+        });
+    }    
 }

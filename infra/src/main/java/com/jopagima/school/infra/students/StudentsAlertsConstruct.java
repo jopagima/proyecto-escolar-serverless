@@ -3,6 +3,7 @@ package com.jopagima.school.infra.students;
 
 import software.amazon.awscdk.services.cloudwatch.Metric;
 import software.amazon.awscdk.services.cloudwatch.MetricOptions;
+import software.amazon.awscdk.services.cloudwatch.TreatMissingData;
 import software.amazon.awscdk.services.cloudwatch.actions.SnsAction;
 import software.amazon.awscdk.Duration;
 import software.amazon.awscdk.services.lambda.Function;
@@ -30,6 +31,7 @@ public class StudentsAlertsConstruct extends Construct {
             CreateAlarmOptions.builder()
                 .threshold(1)
                 .evaluationPeriods(1)
+                .treatMissingData(TreatMissingData.NOT_BREACHING)
                 .build());
         alarm.addAlarmAction(new SnsAction(topic));
     }
