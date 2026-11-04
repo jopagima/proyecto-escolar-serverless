@@ -2,7 +2,10 @@ package com.jopagima.school.infra.students;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,5 +58,22 @@ public class StudentsAlertsConstructTest {
             assertEquals("Errors", properties.get("MetricName"));
             assertEquals("AWS/Lambda", properties.get("Namespace"));
         });
-    }    
+    }  
+    
+    @Test
+    void everyAlarmWatchesADifferentLambda() {
+        Map<String, Map<String, Object>> alarms = template.findResources("AWS::CloudWatch::Alarm");
+
+        Set<Object> watchedFunctions = new HashSet<>();
+        alarms.values().forEach(alarm -> {
+            Map<?, ?> properties = (Map<?, ?>) alarm.get("Properties");
+            List<?> dimensions = (List<?>) properties.get("Dimensions");
+            dimensions.stream()
+                    .map(dimension -> (Map<?, ?>) dimension)
+                    .filter(dimension -> "FunctionName".equals(dimension.get("Name")))
+                    .forEach(dimension -> watchedFunctions.add(dimension.get("Value")));
+        });
+
+        assertEquals(2, watchedFunctions.size());
+    }      
 }
