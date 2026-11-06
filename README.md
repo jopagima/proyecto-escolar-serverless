@@ -42,6 +42,7 @@ Full mapping, rationale and cost trade-offs are tracked in `memoria-progreso.md`
 - **Compute:** AWS Lambda, one function per operation, packaged as a shaded/uber jar
 - **API layer:** Amazon API Gateway (HTTP API), Lambda proxy integration
 - **CI/CD:** AWS CodePipeline + AWS CodeBuild, triggered on push via GitHub CodeStar Connection
+- **Observability:** CloudWatch (log retention, EMF custom metrics, alarms) with SNS email notifications; AWS X-Ray tracing
 - **Testing:** JUnit 5, Mockito, CDK `Template` assertions
 - **Frontend (later phase):** Angular + Angular Material
 
@@ -122,9 +123,10 @@ explicitly, with an estimate, before being introduced.
 |---|---|---|
 | 0 | Setup & diagnosis | ✅ Closed |
 | 1 | Students (CRUD, DynamoDB, Lambda, API Gateway, CI/CD pipeline) | ✅ Closed — deployed and verified end-to-end in production |
-| 2 | Courses — hexagonal architecture | 🔄 In progress (Día 8 of 9 closed — both services migrated to hexagonal; student photo upload via S3 presigned URL and Cognito authentication deployed and verified) |
+| 2 | Courses — hexagonal architecture | ✅ Closed (Día 9 of 9 verified — both services migrated to hexagonal; student photo upload via S3 presigned URL, Cognito authentication and observability deployed and verified) |
 | 3 | Exams / Questions | ⏳ Pending |
 | 4 | Answers | ⏳ Pending |
+| 4B | AI-assisted answer grading (SQS, Bedrock, Step Functions) | 💡 Proposed — starts after Phases 3 and 4 |
 | 5 | Subjects (parent/child hierarchy, cursor pagination) | ⏳ Pending |
 | 6 | Angular frontend (hexagonal frontend activated) | ⏳ Pending |
 
@@ -165,7 +167,7 @@ API Gateway, backed by a Lambda (Java 17) writing to DynamoDB with an atomic con
 write. The pipeline (Source → Synth → SelfMutate → Assets → Deploy) runs green
 end-to-end.
 
-**Phase 2 (Courses) in progress — Día 8 of 9 closed.** Both `courses-service` and
+**Phase 2 (Courses) closed — Día 9 of 9 verified in AWS.** Both `courses-service` and
 `students-service` are fully migrated to the hexagonal layout, applied via the
 `hexagonal-retrofit` Claude Code Skill (`.claude/skills/hexagonal-retrofit/`) —
 `courses-service` in one batched commit
@@ -206,5 +208,22 @@ users: no token and a forged token `401`, a student `403`, a teacher `200`/`201`
 test was checked by deliberately breaking the code. Known limitations: students cannot do
 anything yet because there is no link between a Cognito user and a student record, so
 "a student may only upload their own photo" is still open; the test client uses
-`USER_PASSWORD_AUTH`, which the frontend must replace with SRP. Next: observability with
-CloudWatch and X-Ray (Día 9).
+`USER_PASSWORD_AUTH`, which the frontend must replace with SRP.
+
+**Día 9 — observability (deployed and verified).** Every denied access is counted with a
+custom CloudWatch metric (`SchoolPlatform/Access`, `AccessDenied`, dimensions `Operation` and
+`Reason`) published through the Embedded Metric Format: the handler writes one JSON line to
+standard output and CloudWatch turns it into a metric, with no extra permission. The
+`Reason` classification lives in a single place (`CallerGroups.denialReason()`). Lambda logs
+are kept for two weeks (`logRetention`, deprecated but kept on purpose because `logGroup`
+would rename the groups and orphan the existing ones), and the S3 adapter no longer logs the
+signed URL. `StudentsAlertsConstruct` adds one `Errors` alarm per Lambda (threshold 1 in 5
+minutes, missing data not breaching) and a shared SNS topic; `StudentsStack` instantiates it
+and `StudentsStackTest` asserts that the deployed stack really contains the alarms and the
+topic. Verified against AWS: two alarms in `OK`, a forced `ALARM` produced an email, both
+log groups show `2 weeks`, and three 403s per operation produced two `AccessDenied`
+metrics each summing 3. X-Ray shows a Java cold start of 1.8 to 2.7 s against 7 to 10 ms
+warm (measured on 403 rejections only), and the HTTP API does not appear in the traces.
+The pipeline had been failing for seven days because the pinned CDK CLI could not read the
+assembly of the newer CDK library; it now installs `aws-cdk@latest`. Known gaps: no alarm on
+`AccessDenied` yet, and it is not yet known whether DynamoDB and S3 appear in the traces.

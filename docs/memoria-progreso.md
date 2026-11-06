@@ -7,8 +7,9 @@ Angular", reimplementado en clave 100% serverless AWS (Lambda, API Gateway, Dyna
 Cognito) con Java + Maven, y frontend Angular apuntando a API Gateway.
 
 ## Fase actual
-Fase: 2 (Cursos)
-Día: 8 (cerrado, verificado en producción) — pendiente Día 9 (Observabilidad)
+Fase: 2 (Cursos) — **cerrada** (Días 1 a 9 verificados)
+Día: 9 (Observabilidad) cerrado y verificado en AWS el 6-11-2026 — siguiente: Fase 3
+(Exámenes), o un día corto para la alarma sobre `AccessDenied` (a decidir)
 
 ## Hecho hasta ahora
 - Fase 0 — Diagnóstico (repo anterior vs. nivel senior), mapeo curso→AWS contrastado
@@ -276,6 +277,53 @@ Día: 8 (cerrado, verificado en producción) — pendiente Día 9 (Observabilida
   (el `delete-item` no da error aunque la clave no exista; un primer intento con el
   marcador `<id del scan>` sin sustituir no borró nada).
 
+- Fase 2, Día 9 — **Observabilidad** (cerrado y verificado en AWS el 6-11-2026).
+  **`students-service` (51 tests)**: `AccessMetrics` (interfaz con `noop()`), `DenialReason`
+  (`GROUP_NOT_ALLOWED("GroupNotAllowed")`, `NO_GROUPS("NoGroups")`) y `EmfAccessMetrics`
+  (línea JSON EMF a la salida estándar mediante un `sink`; espacio de nombres
+  `SchoolPlatform/Access`, métrica `AccessDenied`, dimensiones `Operation` y `Reason`, como
+  mucho 4 métricas). 4 tests del formato: definición, valores y dimensiones en el nivel
+  superior (detectó que se publicaba `reason.name()` y no la etiqueta), etiquetas fijas y
+  una sola línea (comprobado activando `INDENT_OUTPUT`). `CallerGroups` gana `isEmpty()` y
+  `denialReason()` (regla única, con test directo; al romperla fallan tres tests en tres
+  sitios). Los dos handlers tienen tres constructores: el sin argumentos (Lambda) pide la
+  métrica a `StudentsServiceFactory.createAccessMetrics()` → `EmfAccessMetrics.toStandardOutput()`;
+  los de test usan `noop()` o un `RecordingAccessMetrics` (en `src/test`). Cuatro tests de
+  métricas por handler (alumno, sin identidad, grupo desconocido `[parent]`, y «permitido
+  no registra nada»), cada uno comprobado rompiendo el código. `OPERATION` es
+  `private static final`. `S3PhotoStorageAdapter` ya no registra la URL firmada, solo la clave.
+  **`infra` (22 tests)**: `logRetention(RetentionDays.TWO_WEEKS)` en `createFunction` (test
+  `keepsEveryLambdaLogGroupForTwoWeeks`: dos `Custom::LogRetention` con 14 días; comprobado con
+  `ONE_WEEK` y con una sola función). `StudentsAlertsConstruct`: un tema SNS
+  `OperationalAlertsTopic` y una alarma `Errors` por Lambda (umbral 1, periodo de 5 minutos,
+  1 evaluación, `NOT_BREACHING`, `SnsAction`), con 6 tests (una alarma por Lambda, todas usan
+  `Errors`, cada una vigila una Lambda distinta, cada una notifica al tema, sin tráfico no
+  alarma, umbral y periodo), todos comprobados rompiendo el código. `StudentsApiConstruct`
+  expone `getPhotoUploadFunction()`. `StudentsStack` instancia el construct de alarmas y
+  `StudentsStackTest` (nuevo) exige 2 alarmas y 1 tema en la pila real.
+  **Dos fallos del despliegue**: (1) el pipeline falló cinco veces seguidas durante siete días
+  porque `cdk synth` rechazaba el formato de ensamblado (librería 2.260.0 frente a la CLI
+  fijada a `aws-cdk@2.1128.1`); arreglado editando el buildspec en la consola de CodeBuild
+  (una vez, porque `Synth` usa la definición actual del pipeline y `SelfMutate` viene
+  después), reintentando desde CodePipeline y corrigiendo `PipelineStack` a `aws-cdk@latest`
+  (commit `fix: install the latest cdk cli in the pipeline`). Lo último desplegado hasta
+  entonces era del Día 8. (2) Tras el primer despliegue CloudWatch mostraba 0 alarmas y SNS
+  0 temas: `StudentsAlertsConstruct` tenía sus 6 tests en verde pero **ninguna pila lo
+  instanciaba**; lo cubre `StudentsStackTest`.
+  **Verificado en AWS**: pipeline en verde; 2 alarmas en `OK` con `Errors >= 1 for 1
+  datapoints within 5 minutes`; 1 tema SNS; correo suscrito a mano (la dirección no entra en
+  el repositorio) y confirmado, y `aws cloudwatch set-alarm-state` sobre la alarma de
+  `PhotoUploadFunction` produjo un correo `OK -> ALARM` con los datos esperados; retención
+  `2 weeks` en los grupos de las dos funciones (la Lambda auxiliar de CDK queda en `1 day`);
+  con un usuario `student` de prueba y tres 403 por operación, `list-metrics` mostró las dos
+  métricas (`RequestPhotoUpload` y `RegisterStudent`, ambas `GroupNotAllowed`) y cada una suma
+  **3,0**; X-Ray, ventana de 3 horas: 6 trazas, **arranque en frío de 1,8 a 2,7 s** frente a
+  **7 a 10 ms** en caliente; la HTTP API **no** aparece en las trazas. Usuario de prueba
+  borrado (`list-users` vacío). **Día 9 cerrado.**
+  **Libro de estudio**: PDF + EPUB en inglés (edición 4, 64 páginas) con un capítulo 7
+  completo sobre este día; el MOBI y el zip del fuente ya no se entregan (el fuente se
+  conserva en `.book-source/` dentro de la carpeta de salida).
+
 ## Decisiones técnicas ya tomadas (no reabrir sin motivo)
 - Repo del proyecto: `proyecto-escolar-serverless`. Maven multi-módulo (`infra`,
   `commons`, `students-service`, `courses-service`), Java 17, CDK 2.260.0, AWS SDK v2
@@ -422,6 +470,17 @@ Día: 8 (cerrado, verificado en producción) — pendiente Día 9 (Observabilida
   vigilar diferencias de comportamiento de rutas/`cdk.json` si reaparecen errores ya
   vistos en Linux al volver a tocar `infra`/`cdk synth`/`deploy`.
 
+- **Observabilidad (Día 9)** — métricas propias con EMF y dimensiones acotadas (D-20 del libro);
+  retención de logs con `logRetention` aunque esté obsoleta, porque `logGroup` cambia el nombre
+  del grupo y deja el actual huérfano y sin historial (D-21, deuda anotada: migrar en un día
+  dedicado); alarmas `Errors` por Lambda con un tema SNS compartido y correo suscrito a mano
+  (D-28); arranque en frío de Java asumido en el PoC, sin SnapStart ni más memoria por ahora
+  (D-27); CLI de CDK con `@latest` en el pipeline (D-26); toda pieza nueva de infraestructura
+  lleva un test sobre **la pila real** (D-29).
+- **Idioma del libro de estudio**: inglés, desde la edición 4 (6-11-2026). La regla «código en
+  inglés, explicación en español» sigue vigente para el resto del proyecto; esta memoria sigue
+  en español. El libro se entrega solo en PDF y EPUB.
+
 ## Incidentes relevantes (lecciones operacionales, no repetir)
 - `git clean -xfd` sin comprobar `git status` primero borró todo el trabajo no
   comiteado del Día 4 de Fase 1 (la flag `-x` ignora el `.gitignore`). Reconstruido
@@ -484,6 +543,29 @@ Día: 8 (cerrado, verificado en producción) — pendiente Día 9 (Observabilida
   llama a S3. El permiso solo se ejerce al hacer el `PUT`; esa es la comprobación que
   cierra el día.
 
+- **CLI de CDK desfasada** (Día 9): `cdk synth` fallaba en CodeBuild con «Cloud assembly schema
+  version mismatch» porque la CLI estaba fijada a una versión vieja. `Synth` usa la definición
+  *actual* del pipeline, así que corregir el repositorio no basta: hay que editar el buildspec
+  en la consola, reintentar **desde CodePipeline** (lanzar «Start build» desde el proyecto de
+  CodeBuild se rechaza) y corregir el repositorio antes de que `SelfMutate` reescriba la
+  versión vieja.
+- **Construct sin instanciar** (Día 9): seis tests en verde y cero alarmas en AWS. Los tests de un
+  construct lo montan a mano y no prueban la pila real. Un test `StudentsStackTest` por cada
+  pieza de infraestructura.
+- **Test sobre una pila vacía**: el primer `StudentsStackTest` falló con el mensaje correcto pero
+  por la razón equivocada (un `Stack` vacío; la pista era el aviso «Resources section must exist
+  and be non-empty»). Un rojo no vale si no se sabe por qué falla; se comentó el construct para
+  ver el rojo auténtico.
+- **Test en la clase equivocada**: un test de umbral cayó en la clase de la API; su `forEach`
+  no iteró y los experimentos salían en verde. Cada test con `forEach` empieza comprobando
+  cuántos recursos hay; y se cuadra el recuento de tests por clase.
+- `Code.fromInline` se rechaza con un runtime de Java («Inline source not allowed for java17»);
+  para dobles de prueba que no se ejecutan sirve un runtime de Node.js.
+- La consola de trazas busca por defecto en los últimos 5 minutos: con 0 resultados, ensanchar la
+  ventana antes de sospechar de la configuración.
+- Credenciales de prueba: el usuario de prueba tenía grupo `student` y una contraseña conocida
+  (pegada en la conversación); se borra al terminar y se comprueba con `list-users`.
+
 ## Servicios AWS de la hoja de ruta original ya acoplados
 - DynamoDB — Fase 1, Día 1.
 - AWS Lambda — Fase 1, Día 3.
@@ -491,6 +573,8 @@ Día: 8 (cerrado, verificado en producción) — pendiente Día 9 (Observabilida
 - AWS CodePipeline + AWS CodeBuild — Fase 1, Día 4, operativo y verificado.
 - Amazon S3 (URL prefirmada de subida) — Fase 2, Día 7, operativo y verificado.
 - Amazon Cognito (User Pool, grupos, autorizador JWT) — Fase 2, Día 8, operativo y verificado.
+- Amazon CloudWatch (retención de logs, métricas EMF, alarmas) + Amazon SNS + AWS X-Ray —
+  Fase 2, Día 9, operativo y verificado.
 
 ## Pendiente / próximo día
 **Fase 2, Día 5 — cerrado** (Skill definida, `courses-service` migrado, bug del
@@ -556,8 +640,7 @@ pipeline y comprobado con las seis llamadas (401, 401, 403, 200, 403, 201). Deta
 - **`Content-Type: application/json`** en las respuestas de los handlers (hoy salen como
   `text/plain`), con su test, en `RegisterStudentHandler` y `RequestStudentPhotoUploadHandler`.
 - **Limpieza** en `RequestStudentPhotoUploadHandler`: constante `GROUPS_CLAIM` e import
-  `Optional` sin usar. En `CallerGroups`, comprobar si `isEmpty()` sigue teniendo algún
-  llamador; si no, eliminarlo (código sin consumidor ni test).
+  `Optional` sin usar. (`CallerGroups.isEmpty()` ya tiene consumidores y test desde el Día 9.)
 - **Limitación conocida**: el endpoint de la foto firma una URL para cualquier UUID válido,
   exista o no ese alumno (el `UseCase` no consulta `StudentRepository`). Ya hay
   autenticación y solo `teacher` y `admin` pueden pedirla, pero un profesor podría dejar
@@ -568,11 +651,75 @@ pipeline y comprobado con las seis llamadas (401, 401, 403, 200, 403, 201). Deta
   `functionName` fijo, cambiarlos hace fallar el despliegue con «ya existe»), y actualizar
   el Javadoc de `StudentsStack` (no menciona el bucket ni el pool).
 
-**Fase 2, Día 9 — Observabilidad (CloudWatch + X-Ray)**: módulo 14 de 15 del curso de
-certificación. Las dos Lambdas ya tienen `Tracing.ACTIVE` (X-Ray) desde el Día 7, así que
-parte del trabajo está hecho. Alcance a definir: métricas propias con EMF, trazas sobre
-API Gateway → Lambda → DynamoDB, un panel o alarmas básicas, y los registros de las
-Lambdas.
+**Fase 2, Día 9 — cerrado y verificado en AWS (6-11-2026)** — Observabilidad: métrica
+`AccessDenied` con EMF, retención de logs de 2 semanas, alarmas de errores con tema SNS y aviso
+por correo, alarmas cableadas en la pila real y trazas leídas. `students-service` (51 tests) e
+`infra` (22 tests) en verde. Detalle en «Hecho hasta ahora».
+
+**Pendientes que deja el Día 9:**
+- **Sin alarma sobre `AccessDenied`**: la métrica existe, pero nadie recibe aviso ante una
+  avalancha de denegaciones. Candidata a un día corto.
+- Sin probar en vivo: la alarma de `RegisterStudentFunction` y el motivo `NoGroups`
+  (cubiertos por tests locales).
+- **X-Ray**: no se sabe si DynamoDB y S3 aparecen en las trazas (los 403 salen antes de
+  llamarlos); hace falta una llamada de un `teacher` que llegue a DynamoDB.
+- **`logRetention` obsoleta** (D-21): migrar a `logGroup` en un día dedicado.
+- El test de notificaciones solo comprueba que existe `AlarmActions`, no que apunte al tema.
+- Presentación: rellenar los corchetes de la diapositiva de X-Ray con 1,8 a 2,7 s (arranque en
+  frío) y 7 a 10 ms (en caliente), con la salvedad de que miden solo rechazos 403.
+- Actualizar la presentación y el libro en cada cierre (el libro crece como capítulo 14 y
+  siguientes, y actualiza el 10, el 11, el 12, el 13 y el anexo E).
+
+**Fase 4B — Corrección asistida por IA y mensajería (propuesta de José, 26-10-2026; sin
+fecha, no empezar antes de las Fases 3 y 4).** Idea: tras guardar las respuestas de un
+alumno a un examen, un flujo asíncrono las evalúa con un modelo de Bedrock (preguntas
+abiertas) y propone nota y comentario; el profesor revisa y confirma. Une serverless, IA,
+hexagonal y TDD en un caso de portfolio, y da un uso real a SQS.
+- **Alcance nuevo, no contradicción**: el curso original no corrige nada (el microservicio
+  de respuestas solo las guarda y las muestra por alumno y examen). Es una ampliación del
+  dominio.
+- **Qué es realmente nuevo**: SQS con Worker Lambda y Step Functions ya se hicieron en el
+  repo anterior (hoja de ruta: Días 3-6 y 13-14), así que aquí son consolidación. Lo nuevo
+  es Bedrock y, de la hoja de ruta sin hacer, SNS con filtros hacia SQS (Días 23-24),
+  además de DLQ con redrive, respuesta parcial de lote (`ReportBatchItemFailures`) y un
+  límite de concurrencia que proteja la llamada al modelo.
+- **Decisiones que hay que reservar al diseñar las Fases 3 y 4**, para no migrar después:
+  `Question` con un criterio de corrección opcional (`rubric`); `Answer` con estado de
+  corrección (`PENDING`, `PENDING_REVIEW`, `FINAL`), nota, comentario, `modelId` y
+  `promptVersion`.
+- **Arquitectura**: puerto `AnswerGrader` en aplicación; adaptador de Bedrock en
+  infraestructura; consumidor de SQS y handler de Step Functions como adaptadores de
+  entrada que comparten la lógica (la misma idea que el ADR 01 del repo anterior).
+- **Esqueleto provisional** (el contenido se entrega día a día, como siempre): (1) dominio
+  y puertos con un grader falso, TDD; (2) adaptador de Bedrock con salida estructurada,
+  nota validada en el dominio y tests de contrato sin llamar a AWS; (3) cola SQS con DLQ y
+  consumidor (lote parcial, idempotencia, concurrencia limitada); (4) Step Functions con
+  un `Map` sobre las preguntas y `Retry`/`Catch` ante limitación de ritmo; (5) revisión
+  humana por endpoints de profesor/administrador con Cognito, la IA nunca publica una nota
+  sola; (6) SNS hacia SQS con filtros para avisos y estadísticas, opcional; (7)
+  observabilidad del flujo con métricas EMF de latencia, tokens y errores, y alarma por
+  mensajes en la DLQ; (8) evaluación del evaluador: un conjunto pequeño de respuestas
+  calificadas por José y un script que mide cuánto coincide el modelo con su criterio.
+- **Reglas fijadas desde ya**: (a) la respuesta del alumno es entrada no confiable dentro
+  del prompt (puede intentar manipular al modelo): delimitar el texto, exigir salida con
+  esquema estricto y validar el rango de la nota en el dominio; (b) los tests nunca llaman
+  a Bedrock: grader falso en aplicación y cliente simulado en los tests de contrato, y
+  solo la evaluación del día 8 hace llamadas reales, pocas; (c) cada resultado guarda
+  `modelId` y `promptVersion`; (d) solo datos sintéticos en el PoC y en el portfolio.
+- **Coste y puntos sin verificar**: Bedrock cobra por token y los precios no se han
+  comprobado en vivo; antes de habilitarlo, un presupuesto con alerta en AWS Budgets, un
+  modelo pequeño y un máximo de tokens de salida. Comprobar en la consola qué modelos hay
+  en eu-west-1 (o con perfil de inferencia entre regiones) y si hay que solicitar acceso.
+  Las respuestas de alumnos son datos personales, posiblemente de menores: revisar las
+  condiciones de tratamiento antes de usar datos reales.
+- **Decisiones abiertas, a confirmar al llegar**: (1) la tabla de mapeo fija Step
+  Functions Express por coste, pero Express admite hasta 5 minutos y no espera a una
+  persona; si la confirmación del profesor entra en la máquina de estados (token de
+  tarea) hace falta Standard, y si la revisión es un endpoint aparte valen las dos; (2)
+  SQS delante de Step Functions con una Lambda intermedia, o EventBridge Pipes (SQS a Step
+  Functions) sin ella, que sería un servicio nuevo; (3) ubicación: se propone entre la
+  Fase 4 y Subjects (5) como «4B», para no renumerar el frontend (Fase 6), citado en
+  varias notas.
 
 **`CoursesServiceFactory`** sigue pospuesta hasta que exista el Lambda handler de
 matrícula (no se crea infraestructura sin consumidor).
