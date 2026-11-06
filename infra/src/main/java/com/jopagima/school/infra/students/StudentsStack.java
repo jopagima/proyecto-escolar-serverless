@@ -18,7 +18,8 @@ public class StudentsStack extends Stack {
         StudentsPhotoBucketConstruct studentsPhotoBucket = new StudentsPhotoBucketConstruct(this, "StudentsPhotoBucket");
         StudentsUserPoolConstruct studentsUserPool = new StudentsUserPoolConstruct(this, "StudentsUserPool");
         // Create the Lambda function and API Gateway
-        new StudentsApiConstruct (this, "StudentsApi", studentsTable.getTable(), studentsPhotoBucket.getBucket(), studentsUserPool.getAuthorizer());
+        StudentsApiConstruct studentsApi = new StudentsApiConstruct (this, "StudentsApi", studentsTable.getTable(), studentsPhotoBucket.getBucket(), studentsUserPool.getAuthorizer());
+        new StudentsAlertsConstruct(this, "StudentsAlerts", studentsApi.getRegisterStudentFunction(), studentsApi.getPhotoUploadFunction());
     }
 
 }
